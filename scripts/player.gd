@@ -12,6 +12,7 @@ const RESPAWN_SECONDS := 10
 const SHAKE_DECAY := 24.0
 const HIT_SHAKE_STRENGTH := 5.0
 const QUICK_SLOT_DISPLAY_INTERVAL := 0.1
+const ZOOM_LEVELS := [1.0, 1.3]
 
 const CHARACTER_DATA := {
 	"warrior": {"prefix": "warrior", "directional": true,
@@ -51,6 +52,7 @@ const CHARACTER_DATA := {
 @onready var death_countdown_label: Label = $DeathScreen/Center/VBox/CountdownLabel
 @onready var victory_screen: CanvasLayer = $VictoryScreen
 @onready var victory_info_label: Label = $VictoryScreen/Center/VBox/InfoLabel
+@onready var zoom_button: Button = $HUD/Margin/VBox/ZoomButton
 @onready var quick_slot_heal_label: Label = $HUD/Margin/VBox/QuickSlotBar/Heal/Label
 @onready var quick_slot_throwable_label: Label = $HUD/Margin/VBox/QuickSlotBar/Throwable/Label
 @onready var quick_slot_buff_label: Label = $HUD/Margin/VBox/QuickSlotBar/Buff/Label
@@ -97,6 +99,7 @@ func _ready() -> void:
 	sprite.animation_finished.connect(_on_sprite_animation_finished)
 	sprite.play(_resolve_anim("idle"))
 	aim_indicator.rotation = facing_direction.angle()
+	_apply_camera_zoom()
 	_update_hud()
 
 
@@ -227,6 +230,19 @@ func _open_inventory() -> void:
 
 func _on_inventory_button_pressed() -> void:
 	_open_inventory()
+
+
+func _apply_camera_zoom() -> void:
+	camera.zoom = Vector2(GlobalState.camera_zoom, GlobalState.camera_zoom)
+	zoom_button.text = "Zoom: %.1fx" % GlobalState.camera_zoom
+
+
+func _on_zoom_button_pressed() -> void:
+	var current_index := ZOOM_LEVELS.find(GlobalState.camera_zoom)
+	var next_index := (current_index + 1) % ZOOM_LEVELS.size() if current_index != -1 else 0
+	GlobalState.camera_zoom = ZOOM_LEVELS[next_index]
+	_apply_camera_zoom()
+	GlobalState.save_game()
 
 
 func _on_quick_slot_heal_pressed() -> void:
