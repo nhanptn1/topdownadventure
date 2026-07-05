@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/decor_tree_dead.png" id="1"]
+
+[sub_resource type="CircleShape2D" id="DeadTrunkShape"]
+radius = 8.0
+
+[node name="DecorTreeDead" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 25)
+shape = SubResource("DeadTrunkShape")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+scale = Vector2(0.360, 0.360)
+texture = ExtResource("1")

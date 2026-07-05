@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[sub_resource type="CircleShape2D" id="TreeTrunkShape"]
+radius = 9.0
+
+[node name="DecorTree" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 16)
+shape = SubResource("TreeTrunkShape")
+
+[node name="CanopyBack" type="Polygon2D" parent="."]
+position = Vector2(0, -6)
+polygon = PackedVector2Array(26, 0, 18, 18, 0, 26, -18, 18, -26, 0, -18, -18, 0, -26, 18, -18)
+color = Color(0.13, 0.32, 0.11, 1)
+
+[node name="CanopyMid" type="Polygon2D" parent="."]
+position = Vector2(-4, -10)
+polygon = PackedVector2Array(20, 0, 14, 14, 0, 20, -14, 14, -20, 0, -14, -14, 0, -20, 14, -14)
+color = Color(0.18, 0.42, 0.14, 1)
+
+[node name="CanopyHighlight" type="Polygon2D" parent="."]
+position = Vector2(-8, -15)
+polygon = PackedVector2Array(14, 0, 10, 10, 0, 14, -10, 10, -14, 0, -10, -10, 0, -14, 10, -10)
+color = Color(0.26, 0.52, 0.18, 1)
+
+[node name="Trunk" type="Polygon2D" parent="."]
+position = Vector2(0, 16)
+polygon = PackedVector2Array(-5, -10, 5, -10, 5, 10, -5, 10)
+color = Color(0.36, 0.24, 0.14, 1)

@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[sub_resource type="RectangleShape2D" id="MountainBaseShape"]
+size = Vector2(170, 50)
+
+[node name="DecorMountain" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 35)
+shape = SubResource("MountainBaseShape")
+
+[node name="Base" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-90, 55, -55, -20, -20, -75, 10, -35, 45, -95, 80, -10, 90, 55)
+color = Color(0.34, 0.3, 0.28, 1)
+
+[node name="Shade" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(10, -35, 45, -95, 80, -10, 90, 55, 40, 55, 20, 10)
+color = Color(0.24, 0.21, 0.19, 1)
+
+[node name="SnowCapLeft" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-35, -50, -20, -75, -5, -52, -18, -58)
+color = Color(0.92, 0.93, 0.95, 0.85)
+
+[node name="SnowCapRight" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(25, -65, 45, -95, 65, -62, 48, -68)
+color = Color(0.92, 0.93, 0.95, 0.85)

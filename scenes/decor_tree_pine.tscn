@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/decor_tree_pine.png" id="1"]
+
+[sub_resource type="CircleShape2D" id="PineTrunkShape"]
+radius = 8.0
+
+[node name="DecorTreePine" type="StaticBody2D"]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 25)
+shape = SubResource("PineTrunkShape")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+scale = Vector2(0.293, 0.293)
+texture = ExtResource("1")

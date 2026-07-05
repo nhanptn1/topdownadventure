@@ -1,0 +1,118 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/dragon_spawner.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tile_stone.png" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/spawn_point.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/gate.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/decor_mushroom_red.tscn" id="6"]
+
+[sub_resource type="RectangleShape2D" id="WallHoriz"]
+size = Vector2(1000, 32)
+
+[sub_resource type="RectangleShape2D" id="WallVert"]
+size = Vector2(32, 700)
+
+[node name="Cave" type="Node2D"]
+
+[node name="Ground" type="Sprite2D" parent="."]
+texture = ExtResource("3")
+centered = false
+region_enabled = true
+region_rect = Rect2(0, 0, 1000, 700)
+texture_repeat = 2
+modulate = Color(0.45, 0.45, 0.5, 1)
+
+[node name="WallTop" type="StaticBody2D" parent="."]
+position = Vector2(500, 16)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallTop"]
+shape = SubResource("WallHoriz")
+
+[node name="Visual" type="Polygon2D" parent="WallTop"]
+polygon = PackedVector2Array(-500, -16, 500, -16, 500, 16, -500, 16)
+color = Color(0.15, 0.15, 0.18, 1)
+
+[node name="WallBottom" type="StaticBody2D" parent="."]
+position = Vector2(500, 684)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallBottom"]
+shape = SubResource("WallHoriz")
+
+[node name="Visual" type="Polygon2D" parent="WallBottom"]
+polygon = PackedVector2Array(-500, -16, 500, -16, 500, 16, -500, 16)
+color = Color(0.15, 0.15, 0.18, 1)
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(16, 350)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallLeft"]
+shape = SubResource("WallVert")
+
+[node name="Visual" type="Polygon2D" parent="WallLeft"]
+polygon = PackedVector2Array(-16, -350, 16, -350, 16, 350, -16, 350)
+color = Color(0.15, 0.15, 0.18, 1)
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(984, 350)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallRight"]
+shape = SubResource("WallVert")
+
+[node name="Visual" type="Polygon2D" parent="WallRight"]
+polygon = PackedVector2Array(-16, -350, 16, -350, 16, 350, -16, 350)
+color = Color(0.15, 0.15, 0.18, 1)
+
+[node name="Player" parent="." instance=ExtResource("1")]
+position = Vector2(100, 350)
+
+[node name="SpawnPoint" parent="." instance=ExtResource("4")]
+position = Vector2(100, 350)
+
+[node name="ExitGate" parent="." instance=ExtResource("5")]
+position = Vector2(180, 350)
+required_level = 0
+next_map_path = "res://scenes/map.tscn"
+locked_color = Color(0.35, 0.25, 0.15, 0.7)
+unlocked_color = Color(0.5, 0.35, 0.18, 0.9)
+label_text_override = "Exit Cave"
+
+[node name="Mushroom1" parent="." instance=ExtResource("6")]
+position = Vector2(150, 550)
+
+[node name="Mushroom2" parent="." instance=ExtResource("6")]
+position = Vector2(200, 470)
+
+[node name="CrystalSlimeSpawner" type="Node2D" parent="."]
+script = ExtResource("2")
+map_size = Vector2(1000, 700)
+dragon_count = 1
+respawn_delay = 45.0
+animal_name = "Crystal Slime King"
+is_aggressive = true
+min_level = 12
+max_level = 15
+species = "slime"
+body_tint = Color(0.55, 0.35, 0.95, 1)
+drop_chance = 1.0
+is_guardian = true
+enemy_scale = 1.25
+
+[node name="BoneWardenSpawner" type="Node2D" parent="."]
+script = ExtResource("2")
+map_size = Vector2(1000, 700)
+dragon_count = 1
+respawn_delay = 45.0
+animal_name = "Bone Warden"
+is_aggressive = true
+min_level = 12
+max_level = 15
+species = "skeleton"
+body_tint = Color(0.4, 0.4, 0.42, 1)
+drop_chance = 1.0
+is_guardian = true
+enemy_scale = 1.25

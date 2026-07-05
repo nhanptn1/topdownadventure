@@ -1,0 +1,11 @@
+[gd_scene load_steps=1 format=3]
+
+[node name="HealthBar" type="Node2D"]
+
+[node name="Background" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(0, 0, 30, 0, 30, 4, 0, 4)
+color = Color(0.1, 0.1, 0.1, 0.8)
+
+[node name="Fill" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(0, 0, 30, 0, 30, 4, 0, 4)
+color = Color(0.2, 0.8, 0.2, 1)
