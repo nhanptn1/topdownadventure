@@ -426,6 +426,15 @@ func _respawn() -> void:
 	death_screen.visible = false
 	get_tree().paused = false
 	_update_hud()
+	_restore_boss_and_guardian_health()
+
+
+func _restore_boss_and_guardian_health() -> void:
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.is_final_boss or enemy.gate_boss_id != "" or enemy.is_guardian:
+			enemy.restore_full_health()
 
 
 func trigger_victory() -> void:

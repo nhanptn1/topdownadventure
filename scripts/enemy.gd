@@ -333,6 +333,13 @@ func take_damage(amount: int, is_crit: bool = false) -> void:
 		_die()
 
 
+func restore_full_health() -> void:
+	if state == State.DEAD:
+		return
+	health = max_health
+	health_bar_fill.scale.x = 1.0
+
+
 func _spawn_damage_number(amount: int, is_crit: bool) -> void:
 	var number := preload("res://scenes/damage_number.tscn").instantiate()
 	number.amount = amount
