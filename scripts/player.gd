@@ -52,7 +52,7 @@ const CHARACTER_DATA := {
 @onready var death_countdown_label: Label = $DeathScreen/Center/VBox/CountdownLabel
 @onready var victory_screen: CanvasLayer = $VictoryScreen
 @onready var victory_info_label: Label = $VictoryScreen/Center/VBox/InfoLabel
-@onready var zoom_button: Button = $HUD/Margin/VBox/ZoomButton
+@onready var zoom_button: Button = $MinimapLayer/ZoomButton
 @onready var quick_slot_heal_label: Label = $HUD/Margin/VBox/QuickSlotBar/Heal/Label
 @onready var quick_slot_throwable_label: Label = $HUD/Margin/VBox/QuickSlotBar/Throwable/Label
 @onready var quick_slot_buff_label: Label = $HUD/Margin/VBox/QuickSlotBar/Buff/Label
@@ -210,6 +210,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_try_attack()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_step_zoom(1)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_step_zoom(-1)
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
 		_try_attack()
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_I:
@@ -240,6 +244,18 @@ func _apply_camera_zoom() -> void:
 func _on_zoom_button_pressed() -> void:
 	var current_index := ZOOM_LEVELS.find(GlobalState.camera_zoom)
 	var next_index := (current_index + 1) % ZOOM_LEVELS.size() if current_index != -1 else 0
+	GlobalState.camera_zoom = ZOOM_LEVELS[next_index]
+	_apply_camera_zoom()
+	GlobalState.save_game()
+
+
+func _step_zoom(direction: int) -> void:
+	var current_index := ZOOM_LEVELS.find(GlobalState.camera_zoom)
+	if current_index == -1:
+		current_index = 0
+	var next_index: int = clampi(current_index + direction, 0, ZOOM_LEVELS.size() - 1)
+	if ZOOM_LEVELS[next_index] == GlobalState.camera_zoom:
+		return
 	GlobalState.camera_zoom = ZOOM_LEVELS[next_index]
 	_apply_camera_zoom()
 	GlobalState.save_game()
