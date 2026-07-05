@@ -37,7 +37,17 @@ jobs:
       - name: Export Web build
         run: |
           mkdir -p build/web
-          godot --headless --export-release "Web" build/web/index.html
+          godot --headless --verbose --export-release "Web" build/web/index.html
+
+      - name: List build output (debug)
+        run: ls -la build/web
+
+      - name: Verify index.html was actually produced
+        run: |
+          if [ ! -s build/web/index.html ]; then
+            echo "::error::build/web/index.html is missing or empty - the export silently failed. Check the 'Export Web build' step's verbose log above for the real error (often a missing/mismatched export template)."
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
