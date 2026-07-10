@@ -351,8 +351,29 @@ func _try_attack() -> void:
 	get_tree().current_scene.add_child(proj)
 	AudioManager.play("attack")
 
-	sprite.speed_scale = 1.0
-	sprite.play(_resolve_anim("attack"))
+	var anim_name := _resolve_anim("attack")
+	sprite.speed_scale = _attack_speed_scale_for(anim_name)
+	sprite.play(anim_name)
+
+
+func _attack_speed_scale_for(anim_name: String) -> float:
+	# Keep the swing animation's real playtime locked to the actual
+	# cooldown (attack_cooldown.wait_time, already adjusted for gear's
+	# attack_speed_bonus) instead of always playing at 1x. Without this,
+	# any character whose natural frame_count/fps runtime differs from
+	# ATTACK_COOLDOWN_BASE drifts out of sync with the cooldown -- and
+	# attack-speed gear, which only shortens the cooldown, would have no
+	# visible effect once the cooldown drops below the animation's fixed
+	# natural duration.
+	var frames := sprite.sprite_frames
+	if frames == null or not frames.has_animation(anim_name):
+		return 1.0
+	var frame_count := frames.get_frame_count(anim_name)
+	var base_fps := frames.get_animation_speed(anim_name)
+	if frame_count <= 0 or base_fps <= 0.0 or attack_cooldown.wait_time <= 0.0:
+		return 1.0
+	var natural_duration := float(frame_count) / base_fps
+	return natural_duration / attack_cooldown.wait_time
 
 
 func _on_sprite_animation_finished() -> void:
