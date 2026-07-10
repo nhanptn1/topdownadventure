@@ -13,7 +13,7 @@ extends CharacterBody2D
 enum Phase { PHASE_1, PHASE_2, PHASE_3, DEAD }
 
 const CHASE_SPEED := 90.0
-const CHASE_STOP_DISTANCE := 70.0
+const CHASE_STOP_DISTANCE := 35.0
 
 const PHASE2_HP_RATIO := 0.6
 const PHASE3_HP_RATIO := 0.3
@@ -190,11 +190,19 @@ func _enter_phase(new_phase: Phase) -> void:
 		Phase.PHASE_2:
 			print(animal_name, " enters Phase 2 (", int(PHASE2_HP_RATIO * 100), "% HP) -- attacks speed up.")
 			attack_timer.wait_time = PHASE_ATTACK_INTERVAL[Phase.PHASE_2]
+			sprite.speed_scale = 1.0
 			sprite.play("enraged")
 			_phase_transition_juice()
 		Phase.PHASE_3:
 			print(animal_name, " enters Phase 3 (", int(PHASE3_HP_RATIO * 100), "% HP) -- enraged.")
 			attack_timer.wait_time = PHASE_ATTACK_INTERVAL[Phase.PHASE_3]
+			# The "enraged" clip (and the ranged bolt it casts on frame
+			# RANGED_CAST_FRAME each loop) never got a Phase 3 speed-up on
+			# its own -- it just kept playing at the Phase 2 pace, so the
+			# ranged attack didn't get more dangerous the way melee does.
+			# Scale it by the same ratio melee's cooldown speeds up by, so
+			# both attack types escalate together.
+			sprite.speed_scale = PHASE_ATTACK_INTERVAL[Phase.PHASE_2] / float(PHASE_ATTACK_INTERVAL[Phase.PHASE_3])
 			_phase_transition_juice()
 		Phase.DEAD:
 			_die()
@@ -266,6 +274,7 @@ func restore_full_health() -> void:
 	health_bar_fill.scale.x = 1.0
 	phase = Phase.PHASE_1
 	attack_timer.wait_time = PHASE_ATTACK_INTERVAL[Phase.PHASE_1]
+	sprite.speed_scale = 1.0
 	sprite.play("idle")
 
 

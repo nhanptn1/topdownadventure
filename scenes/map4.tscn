@@ -4,7 +4,6 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/tile_stone.png" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/spawn_point.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ultimate_boss.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/decor_rock.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/decor_mountain.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/gate.tscn" id="7"]
 
@@ -83,22 +82,6 @@ label_text_override = "Retreat to Map 3"
 [node name="UltimateBoss" parent="." instance=ExtResource("4")]
 position = Vector2(950, 450)
 scale = Vector2(1.4, 1.4)
-
-[node name="Rock1" parent="." instance=ExtResource("5")]
-position = Vector2(300, 200)
-modulate = Color(0.6, 0.5, 0.65, 1)
-
-[node name="Rock2" parent="." instance=ExtResource("5")]
-position = Vector2(300, 700)
-modulate = Color(0.6, 0.5, 0.65, 1)
-
-[node name="Rock3" parent="." instance=ExtResource("5")]
-position = Vector2(600, 150)
-modulate = Color(0.6, 0.5, 0.65, 1)
-
-[node name="Rock4" parent="." instance=ExtResource("5")]
-position = Vector2(600, 750)
-modulate = Color(0.6, 0.5, 0.65, 1)
 
 [node name="Mountain1" parent="." instance=ExtResource("6")]
 position = Vector2(60, 60)

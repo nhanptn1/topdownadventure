@@ -11,6 +11,7 @@ const BASE_HP := 8
 const HP_PER_LEVEL := 3
 const BASE_ATTACK := 4
 const ATTACK_PER_LEVEL := 2
+const DETECTION_FOV_DEGREES := 140.0
 
 const SPECIES_DATA := {
 	"dragon": {
@@ -165,7 +166,7 @@ func _physics_process(_delta: float) -> void:
 		return
 
 	if state == State.IDLE and potential_target != null:
-		if _has_line_of_sight(potential_target):
+		if _within_fov(potential_target) and _has_line_of_sight(potential_target):
 			target_player = potential_target
 			_stop_wandering()
 			state = State.CHASE
@@ -272,6 +273,14 @@ func _update_animation() -> void:
 
 	if sprite.animation != anim_name:
 		sprite.play(anim_name)
+
+
+func _within_fov(target: Node2D) -> bool:
+	var to_target := target.global_position - global_position
+	if to_target.length() < 0.1:
+		return true
+	var angle := absf(facing_direction.angle_to(to_target.normalized()))
+	return angle <= deg_to_rad(DETECTION_FOV_DEGREES / 2.0)
 
 
 func _has_line_of_sight(target: Node2D) -> bool:
