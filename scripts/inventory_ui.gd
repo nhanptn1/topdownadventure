@@ -88,7 +88,7 @@ func _build_equip_row(slot: String, item_id: String) -> HBoxContainer:
 		label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
 	else:
 		var item := ItemDatabase.get_item(item_id)
-		label.text = "%s\n%s (%s)" % [slot.capitalize(), item.get("name", "?"), _format_stats(item.get("stats", {}))]
+		label.text = "%s\n%s (%s)" % [slot.capitalize(), item.get("name", "?"), _format_stats(GlobalState.get_rolled_stats(item_id))]
 		label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
 		label.tooltip_text = item.get("description", "")
 	row.add_child(label)
@@ -148,7 +148,7 @@ func _build_gear_row(item_id: String) -> HBoxContainer:
 	var name_text: String = item.get("name", "?")
 	if count > 1:
 		name_text = "%s x%d" % [name_text, count]
-	label.text = "%s (%s)" % [name_text, _format_stats(item.get("stats", {}))]
+	label.text = "%s (%s)" % [name_text, _format_stats(GlobalState.get_rolled_stats(item_id))]
 	label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
 	label.tooltip_text = item.get("description", "")
 	row.add_child(label)

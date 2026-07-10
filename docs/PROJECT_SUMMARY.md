@@ -1,6 +1,196 @@
 # TopDownAdventure — Project Summary, Skills, and Next Checklist
 
-*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session, then again after adding a New Game+ postgame loop. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session, then again after adding a New Game+ postgame loop, then again after adding NG+-exclusive mythic gear, then again after the entire weapon/armor/accessory roster was replaced with new art and items, then again after gear drops got randomized per-drop stat rolls. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+
+## 0d. Session (2026-07-10): randomized per-drop stat rolls for gear
+
+Every copy of a gear item used to have identical stats (`item_database.gd`'s `ITEMS`
+was a flat template). The user wanted drops to roll within a range instead (their
+example: a "def +5" item should actually land around 3-5), applied across every stat
+on every rarity tier, for more exciting/replayable loot.
+
+- **Scope check before building**: `GlobalState.storage` is a flat `item_id -> count`
+  stack with no per-copy identity at all (confirmed via `equip_item`/`unequip_slot`/
+  `discard_item` in `player.gd`, which only ever move/remove by *whole count*, never
+  distinguish individual copies), and only `player.gd`/`inventory_ui.gd` touch
+  `storage`/`equipped` directly. A full per-instance inventory (so you could hold two
+  different rolls of the same weapon and pick) would've meant converting that whole
+  stacking model for a feature this game doesn't otherwise use. Went with a smaller,
+  contained design instead.
+- **The authored `stats` value is now the ceiling, not a fixed number.** New
+  `ItemDatabase.STAT_ROLL_MIN_RATIO := 0.6` and `ItemDatabase.roll_stats(id)` roll
+  each stat independently in `[0.6 * base, base]` -- 0.6 exactly matches the "def 5 ->
+  3-5" example. `atk`/`def`/`hp` round to whole numbers, `crit_chance`/`attack_speed`/
+  `stun_chance` round to 2 decimals, `speed` rounds to the nearest whole number. Zero
+  changes needed to the already-tuned `ITEMS` dict itself.
+- **One roll is remembered per item id, not per copy** -- matches how gear already
+  behaved (no existing concept of distinguishing individual copies). New
+  `GlobalState.rolled_stats: Dictionary` (`item_id -> {stat_key: rolled_value}`).
+  `storage_add()` rolls fresh stats on every gear pickup and keeps whichever roll is
+  *better*, via new `ItemDatabase.roll_power_ratio(id, rolled)` (mean of each stat's
+  position in its own [min,max] range -- an apples-to-oranges-safe way to compare a
+  roll that's high on atk but low on crit against one that's the reverse). So finding
+  a duplicate is always either an upgrade or a no-op, never a downgrade. The stack
+  *count* still increments normally and still drives the "x3" label in
+  `inventory_ui.gd` -- only the displayed/used stat numbers change.
+- **Every stat read for gameplay/display now goes through the rolled value.** New
+  `GlobalState.get_rolled_stats(item_id)`/`get_rolled_stat(item_id, key)` (falls back
+  to the base template if an id has no roll yet, e.g. an old save). `player.gd`'s
+  `_recalculate_equipment_stats()` and `_total_hp_bonus()` swapped their
+  `ItemDatabase.get_stat(...)` calls for `GlobalState.get_rolled_stat(...)`;
+  `inventory_ui.gd`'s two `_format_stats(...)` call sites (equip row, gear row) now
+  pass `GlobalState.get_rolled_stats(item_id)` instead of the item's raw `stats` dict.
+  `_format_stats()` itself needed no change -- it already just renders whatever dict
+  it's handed.
+- `rolled_stats` persists in `save_game()`/`load_game()` following the existing field
+  pattern; old saves default to `{}` and fall back to base-template stats until the
+  player picks up a fresh copy of each item.
+- Verified headlessly (disposable test, deleted after passing): 500 `roll_stats()`
+  calls stayed within `[0.6*base, base]` per stat (with rounding fuzz for int stats)
+  and produced real variance (7 distinct atk values seen out of a possible 7); 200
+  simulated `storage_add()` pickups of the same id never let `rolled_stats` regress to
+  a worse roll; stack count incremented normally throughout; a consumable pickup got
+  no `rolled_stats` entry (gear-only, as intended); and `player.gd` correctly read a
+  manually-set rolled value (including float-typed values, simulating what a save/
+  load round-trip produces) rather than the base template.
+
+## 0c. Session (2026-07-10): full weapon/armor/accessory roster replacement
+
+The user supplied a reference sheet (`D:\WORK\PROJECT\GODOT\image\item-design.png`, 1024x1024,
+a 3-row x 4-col grid: weapon/armor/ring rows x common/rare/epic/legendary columns,
+rendered over a two-tone checkerboard) and asked for the 12 icons to be extracted and
+wired into the game. `scripts/extract_sprite.ps1`, referenced by this doc and by the
+`godot-2d-game-dev` skill as "the reusable extraction tool," **does not actually exist
+in this repo** (verified via `git log --all` and a full workspace search) -- that was a
+stale claim, corrected here. The extraction pipeline below was rebuilt from scratch in
+the scratchpad directory instead.
+
+**Extraction pipeline** (PowerShell + `System.Drawing`, not committed -- lived only in
+the session scratchpad):
+- The checkerboard turned out to be a crisp two-tone pattern (~163 and ~205 gray,
+  found via a 20k-point random-pixel histogram), not the fine repeating pattern
+  assumed at first. A naive multi-seed flood fill (this project's usual technique, see
+  `godot-2d-game-dev` §2) doesn't cross a checkerboard's color jump between adjacent
+  squares, and a "drift" flood fill (compare each pixel to its immediate neighbor,
+  not a fixed reference) leaked straight through the art's own shading gradients,
+  eating large chunks out of items. What actually worked: **direct per-pixel
+  dual-reference matching** (pixel is background if it's within a tight tolerance of
+  either exact checker shade) with no connectivity requirement -- this also correctly
+  clears fully-enclosed background like a ring's donut hole, which a border-seeded
+  flood fill can't reach at all.
+- The epic/legendary items have a soft colored glow rendered as part of the flat
+  image (not a separate alpha layer), so a rim of background near those items is
+  checker-tinted toward the glow color and doesn't match the exact checker shades.
+  Fixed with a second, **bounded-iteration dilation pass** (10 fixed passes, not
+  unlimited BFS): each pass extends the background region by one more pixel only
+  where a candidate pixel is within a loose tolerance (40) of an *already-confirmed*
+  background neighbor. Bounding the iteration count (rather than growing until no
+  more matches) is what keeps it from eating into real interior shading the way the
+  unbounded drift version did.
+- Two real PowerShell gotchas hit along the way: (1) `$bg[$idx % $w, [int]($idx / $w)]`
+  inside multi-dimensional array indexer brackets fails with a bogus
+  `op_Modulus`/array-coercion error -- compute the index arithmetic on separate lines
+  first, never inline it inside `[...]`. (2) `[int]($idx / $w)` on two integers
+  performs floating-point division then **banker's-rounds** the cast (not truncation),
+  which occasionally rounded a row index up by 1 and threw
+  `IndexOutOfRangeException` on an unlucky exact-.5 case -- fixed by never encoding
+  (x,y) into a flat index at all for this loop, using two parallel lists instead.
+- The bow icons (weapon column) extracted at a steep diagonal aspect ratio (~1.7-1.85)
+  vs. this project's existing bow icons, which are already near-square (~1.0-1.1) --
+  confirming the existing icons went through the same rotate-and-recrop treatment the
+  `godot-2d-game-dev` skill documents for diagonal weapon art. Rotated each bow
+  (-22 to -40 degrees, angle varies per bow's original slant) and re-cropped to match.
+
+**Scope decision**: the first pass reskinned 8 existing items in place (same id/name/
+stats, new icon only). The user clarified that wasn't what they wanted -- the entire
+old weapon/armor/accessory roster (27 items, spanning multiple items per rarity per
+slot) should be deleted outright and replaced with exactly 12 new items, one per
+slot (weapon/armor/accessory) per rarity tier (common/rare/epic/mythic), matching the
+reference sheet 1:1. Before deleting anything, a research pass grepped the whole
+`scripts/`/`scenes/` tree for the 27 old ids as string literals to check for hardcoded
+dependencies (starting equipment, scripted drops, tutorial text) -- found none outside
+`item_database.gd` itself (only a couple of now-updated descriptive balance comments
+in `ultimate_boss.gd`), so the roster swap was safe to do outright.
+
+**Final roster** (`item_database.gd`'s `ITEMS`, weapon/armor/accessory entries only --
+consumables/materials/quest items untouched):
+- Weapon: `weathered_bow` (common) -> `frostwind_bow` (rare) -> `cursed_runebow`
+  (epic) -> `sovereigns_bow` (mythic, NG+-only, see §0b).
+- Armor: `travelers_tunic` (common) -> `steel_plate_armor` (rare) -> `voidscale_armor`
+  (epic) -> `sovereigns_aegis` (mythic).
+- Accessory: `iron_ring` (common) -> `sapphire_ring` (rare) -> `void_ring` (epic) ->
+  `sovereigns_signet` (mythic).
+- **Stat design, revised once more same session**: the user asked for tiers to feel
+  more dramatically different, not just linearly bigger. Redesigned so each tier adds
+  a stat *line*, not just bigger numbers on the same one or two stats -- common has 1
+  stat, rare 2, epic 3, mythic 4 -- and each mythic item's 4th stat is a kind that
+  tier normally doesn't carry (e.g. `sovereigns_bow` is the only weapon with
+  `stun_chance`; `sovereigns_aegis` is the only armor with `crit_chance`), so the top
+  tier reads as a genuinely different, more exciting item rather than a bigger number
+  on the same template. Common/rare/epic tiers were kept close to the *old* roster's
+  magnitudes (e.g. epic weapon still ~atk8) so the pre-NG+ game (up through beating
+  the final boss the first time) stays balanced against `ultimate_boss.gd`'s existing
+  DPS/HP calibration comments; the dramatic jump is concentrated in the mythic tier,
+  which is already NG+-exclusive and offset by `GlobalState.difficulty_multiplier()`
+  scaling enemies up too.
+- **Bug found and fixed along the way**: instantiating `player.tscn` for the first
+  time this session (previous tests never had a reason to) surfaced a real latent bug
+  -- `NewGamePlusButton.pressed` was wired *twice*: once via `player.tscn`'s own
+  `[connection]` block (matching the sibling `ContinueButton`'s existing convention)
+  and again via a redundant `.connect()` call added in `player.gd _ready()` when NG+
+  was first built (see §0b). Godot logs (but doesn't crash on) a duplicate-connection
+  error every time the scene loads. Fixed by removing the redundant code-side connect
+  and its now-unused `new_game_plus_button` onready var, leaving just the scene-file
+  connection like `ContinueButton` already had.
+- All 27 old items' icon PNGs (and their orphaned `.import` sidecars) were deleted;
+  the reskin session's 8 renamed/reused files and the 3 mythic files were further
+  renamed to match their new item ids exactly (e.g. `icon_hunting_bow.png` became
+  `icon_weathered_bow.png`), plus the weapon/rare bow art that was extracted but
+  unused last pass now became `icon_frostwind_bow.png`.
+- Verified headlessly (disposable test, deleted after passing): all 12 new icon paths
+  resolve and load; all 12 old ids listed above are confirmed gone from `ItemDatabase`;
+  300 `roll_random_item_id()` rolls only ever produced the new ids; mythic items still
+  never drop without `allow_mythic` (i.e. still NG+-exclusive per §0b).
+- **Not yet manually eyeballed in the actual inventory UI** -- headless verification
+  only proved the textures load and the data is correct, not how the art reads at
+  actual in-game icon size/scale. Worth a quick look next session, alongside the other
+  pending manual-playtest items below. The legendary bow icon in particular
+  (`icon_sovereigns_bow.png`) has a very faint residual checker-fringe artifact right
+  at its edge (visible zoomed-in, likely invisible at real icon size) that further
+  cleanup passes started eating into real detail rather than improving -- left as-is
+  rather than over-polishing.
+
+## 0b. Session (2026-07-10): NG+-exclusive mythic gear
+
+New Game+ (§0a) made enemies scale up, but had no reward beyond "do it again but
+harder." Added a 4th rarity tier, gated to NG+ only, so the final boss gives a real
+reason to keep replaying:
+
+- **`ItemDatabase.MYTHIC_COLOR`** + 3 new `rarity: "mythic"` items in `ITEMS`:
+  `windcutter_bow_ascended`, `dragonscale_armor_ascended`, `assassins_signet_ascended`
+  — "reforged" upgrades of the 3 existing epic-tier items referenced in
+  `ultimate_boss.gd`'s balance comment as "the best gear obtainable by this point."
+  Each reuses its base item's existing icon PNG (no new art needed) and roughly
+  scales its stats up ~30-50% (e.g. `windcutter_bow` atk 7/attack_speed 0.20 →
+  `windcutter_bow_ascended` atk 11/attack_speed 0.30).
+- **`ItemDatabase.roll_guardian_drop(map_tier, allow_mythic := false)`**: new second
+  param. When `allow_mythic` is true, a `MYTHIC_DROP_CHANCE` (0.5) roll can return a
+  random mythic item before falling through to the normal tier-weighted roll.
+  `allow_mythic` is only ever passed `true` from `ultimate_boss.gd::_try_drop_item()`,
+  as `GlobalState.ng_plus_level > 0` — so mythic gear is exclusively a "beat the final
+  boss in New Game+" reward, never a regular gate-boss/guardian drop.
+- No inventory UI or equip-stat-recalc changes needed: `inventory_ui.gd` already reads
+  `item.get("color", ...)` generically for the rarity border, and
+  `player.gd::_recalculate_equipment_stats()` already sums whatever's in an item's
+  `stats` dict by existing stat keys (`atk`/`def`/`crit_chance`/`attack_speed`) — the
+  new items are pure data, reusing both paths untouched.
+- Verified headlessly (disposable test, deleted after passing): 500 rolls with
+  `allow_mythic=false` produced zero mythic drops; 4000 rolls with `allow_mythic=true`
+  landed at a 51.2% mythic ratio (expected ~50%); all 3 ascended items' stats confirmed
+  strictly higher than their base counterparts.
+- **Not yet manually verified in-editor** — same caveat as §0a: the math/rolls are
+  proven, but seeing the mythic gold border and equipping one in the actual inventory
+  UI hasn't been eyeballed yet.
 
 ## 0a. Session (2026-07-10): New Game+ / postgame loop
 
@@ -92,7 +282,7 @@ The full general technique playbook distilled from building this project lives i
 What's specific to *this* project and worth remembering on top of that:
 
 - **Data pattern**: content lives in `const` Dictionaries (`CHARACTER_DATA`, `SPECIES_DATA`, `ITEMS`) directly inside the relevant script, not as individually-authored `.tres` Resource files. This is a real, deliberate architectural difference from Endless Archer RPG (which uses per-`.tres` `EnemyData`/`SkillData`/`ItemData` Resources) — the two projects are not meant to converge, and porting a technique from one to the other means translating the pattern, not copy-pasting.
-- **Sprite extraction tooling**: `scripts/extract_sprite.ps1` — dot-source it and call `Extract-Icon` / `Rotate-AndRecrop` / `Show-GridOverlay`. Directly reusable if new sprite sheets ever get added here.
+- **Sprite extraction tooling**: despite this doc and the `godot-2d-game-dev` skill both describing `scripts/extract_sprite.ps1` as an existing reusable tool, it does **not** actually exist anywhere in this repo's history (checked via `git log --all -- scripts/extract_sprite.ps1` and a full workspace search) — a stale claim, corrected in §0c. If sprite extraction is needed again, the working technique from §0c (dual-reference checkerboard matching + bounded-iteration dilation for glow-tinted edges) lived only in a session scratchpad and was never committed here; it would need to be rebuilt or the scratchpad script recovered.
 - **Enemy AI upgrade path already scoped**: `enemy.gd` currently only does radius-detection + chase. `Freedom-Hunter/src/entities/monster.gd` (a cloned 3D reference project) has a clean scout→detect(FOV+raycast LOS)→distance-based-combat-state pattern that was identified as the natural next step if smarter enemies are ever wanted here.
 - **Editor staleness**: kill and relaunch the Godot editor after any external `.tscn`/`.gd` edit — hot-reload isn't trustworthy after out-of-editor changes, a recurring gotcha hit multiple times on this project.
 - **GH Pages deploy traps**: never use the Actions UI's "Re-run failed jobs" button on this workflow — it can attach a stale duplicate artifact to the run. Trigger a genuinely fresh run (new push or `workflow_dispatch`) instead.
@@ -104,5 +294,8 @@ What's specific to *this* project and worth remembering on top of that:
 2. **Manual playtest pass on the auto-attack fixes and the new enemy FOV** — headless tests proved the timing/angle math, but this is all feel; worth a few minutes in the actual editor: auto-attack as warrior/archer/mage (bare and with attack-speed gear) moving in circles around an enemy, plus approaching a few enemies from behind vs. head-on to confirm the FOV cone (140°) feels right, not too generous or too strict.
 3. ~~Enemy AI line-of-sight upgrade~~ — done; see the correction note above. If enemies still feel too easy/too hard to sneak past, `DETECTION_FOV_DEGREES` in `enemy.gd` is the one knob to retune.
 3a. **Manual playtest the New Game+ loop** (see §0a) — headless tests only covered the math/state reset, not the actual button/UI feel or whether 1.5x-per-cycle scaling feels right in practice. `GlobalState.difficulty_multiplier()` is the one knob to retune if NG+1 feels too easy or too brutal.
+3b. **Manual playtest mythic gear** (see §0b) — confirm the gold mythic border renders correctly in the inventory UI and that equipping an ascended item actually feels like a noticeable power jump. `ItemDatabase.MYTHIC_DROP_CHANCE` (0.5) is the knob if it feels too rare/too common.
+3c. **Eyeball the new icon art in the actual inventory UI** (see §0c) — the whole 12-item weapon/armor/accessory roster only got a headless "does it load" check, not a real visual pass. Check the legendary bow icon (`icon_sovereigns_bow.png`) in particular for the faint edge fringe noted in §0c.
+3d. **Manual playtest the stat-roll system** (see §0d) — headless tests proved the roll math and the "keep the better roll" logic, but not how it actually feels to pick up a few of the same item and watch the numbers change in the inventory UI. `ItemDatabase.STAT_ROLL_MIN_RATIO` (0.6) is the one knob to retune if drops feel too random or not random enough.
 4. **No feature-parity backport expected** with Endless Archer RPG — the two projects have deliberately diverged (const-Dict vs per-Resource data, different combat pacing). If a specific polish technique from that project (e.g. the `ShakeCamera`/`offset`-tween pattern, `WorldEnvironment` Glow, or projectile pooling if this game ever needs a bullet-heavy skill) seems worth having here too, treat it as a fresh, deliberate decision each time — not an assumed sync.
 5. **This doc itself** — update it directly the next time meaningful work lands here, rather than letting it drift stale; there's no separate memory-system record of this project's status, so this file is the authoritative one.

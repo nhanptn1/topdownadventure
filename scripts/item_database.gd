@@ -4,198 +4,94 @@ class_name ItemDatabase
 const COMMON_COLOR := Color(0.85, 0.85, 0.85)
 const RARE_COLOR := Color(0.3, 0.55, 1.0)
 const EPIC_COLOR := Color(0.65, 0.25, 0.95)
+const MYTHIC_COLOR := Color(1.0, 0.75, 0.15)
 
 const GEAR_STACK_SIZE := 999999
 
 const ITEMS := {
-	"iron_sword": {
-		"name": "Iron Sword", "item_type": "weapon", "slot": "weapon", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_iron_sword.png",
+	"weathered_bow": {
+		"name": "Weathered Bow", "item_type": "weapon", "slot": "weapon", "rarity": "common", "color": COMMON_COLOR,
+		"icon": "res://assets/sprites/icon_weathered_bow.png",
 		"stack_size": GEAR_STACK_SIZE,
 		"stats": {"atk": 3},
-		"description": "A simple, dependable blade.",
+		"description": "A simple wooden bow, its string worn from years of use.",
 	},
-	"hunting_bow": {
-		"name": "Hunting Bow", "item_type": "weapon", "slot": "weapon", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_hunting_bow.png",
+	"frostwind_bow": {
+		"name": "Frostwind Bow", "item_type": "weapon", "slot": "weapon", "rarity": "rare", "color": RARE_COLOR,
+		"icon": "res://assets/sprites/icon_frostwind_bow.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 3},
-		"description": "A simple recurve bow, light and quick to swing.",
+		"stats": {"atk": 6, "attack_speed": 0.10},
+		"description": "A slender bow etched with frost-blue filigree. +10% attack speed.",
 	},
-	"steel_blade": {
-		"name": "Steel Blade", "item_type": "weapon", "slot": "weapon", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_steel_blade.png",
+	"cursed_runebow": {
+		"name": "Cursed Runebow", "item_type": "weapon", "slot": "weapon", "rarity": "epic", "color": EPIC_COLOR,
+		"icon": "res://assets/sprites/icon_cursed_runebow.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 6, "crit_chance": 0.05},
-		"description": "Well-honed steel. +5% chance to land a critical hit.",
+		"stats": {"atk": 8, "crit_chance": 0.12, "attack_speed": 0.08},
+		"description": "A bow bound in crimson runes that hunger for a killing blow. +12% crit chance, +8% attack speed.",
 	},
-	"knight_axe": {
-		"name": "Knight Axe", "item_type": "weapon", "slot": "weapon", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_knight_axe.png",
+	"sovereigns_bow": {
+		"name": "Sovereign's Bow", "item_type": "weapon", "slot": "weapon", "rarity": "mythic", "color": MYTHIC_COLOR,
+		"icon": "res://assets/sprites/icon_sovereigns_bow.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 9, "stun_chance": 0.15},
-		"description": "A heavy axe with a 15% chance to stun on hit.",
+		"stats": {"atk": 14, "crit_chance": 0.20, "attack_speed": 0.25, "stun_chance": 0.10},
+		"description": "Reforged with the Withered Sovereign's essence. +20% crit chance, +25% attack speed, +10% chance to stun on hit.",
 	},
-	"leather_armor": {
-		"name": "Leather Armor", "item_type": "armor", "slot": "armor", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_leather_armor.png",
+	"travelers_tunic": {
+		"name": "Traveler's Tunic", "item_type": "armor", "slot": "armor", "rarity": "common", "color": COMMON_COLOR,
+		"icon": "res://assets/sprites/icon_travelers_tunic.png",
 		"stack_size": GEAR_STACK_SIZE,
 		"stats": {"def": 2},
-		"description": "Basic protection against enemy strikes.",
+		"description": "A simple tunic offering modest protection.",
 	},
-	"chain_mail": {
-		"name": "Chain Mail", "item_type": "armor", "slot": "armor", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_chain_mail.png",
+	"steel_plate_armor": {
+		"name": "Steel Plate Armor", "item_type": "armor", "slot": "armor", "rarity": "rare", "color": RARE_COLOR,
+		"icon": "res://assets/sprites/icon_steel_plate_armor.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 5, "hp": 10},
-		"description": "Sturdy mail links. Also bolsters max HP.",
+		"stats": {"def": 6, "hp": 10},
+		"description": "Polished steel plate, sturdy and reassuring. Also bolsters max HP.",
 	},
-	"guardian_plate": {
-		"name": "Guardian Plate", "item_type": "armor", "slot": "armor", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_guardian_plate.png",
+	"voidscale_armor": {
+		"name": "Voidscale Armor", "item_type": "armor", "slot": "armor", "rarity": "epic", "color": EPIC_COLOR,
+		"icon": "res://assets/sprites/icon_voidscale_armor.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 9},
-		"description": "Heavy plate armor that blunts nearly every blow.",
+		"stats": {"def": 8, "hp": 15, "speed": 10.0},
+		"description": "Armor grown from scales torn out of the void. Tough, vitalizing, and unnaturally light.",
 	},
-	"copper_ring": {
-		"name": "Copper Ring", "item_type": "accessory", "slot": "accessory", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_copper_ring.png",
+	"sovereigns_aegis": {
+		"name": "Sovereign's Aegis", "item_type": "armor", "slot": "armor", "rarity": "mythic", "color": MYTHIC_COLOR,
+		"icon": "res://assets/sprites/icon_sovereigns_aegis.png",
+		"stack_size": GEAR_STACK_SIZE,
+		"stats": {"def": 16, "hp": 35, "speed": 20.0, "crit_chance": 0.08},
+		"description": "Reforged with the Withered Sovereign's essence. Nearly impervious, and its wearer strikes with unnatural precision. +8% crit chance.",
+	},
+	"iron_ring": {
+		"name": "Iron Ring", "item_type": "accessory", "slot": "accessory", "rarity": "common", "color": COMMON_COLOR,
+		"icon": "res://assets/sprites/icon_iron_ring.png",
 		"stack_size": GEAR_STACK_SIZE,
 		"stats": {"hp": 5},
-		"description": "A modest trinket that toughens you slightly.",
-	},
-	"amulet_of_focus": {
-		"name": "Amulet of Focus", "item_type": "accessory", "slot": "accessory", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_amulet_focus.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"attack_speed": 0.15},
-		"description": "Sharpens focus, letting you attack 15% faster.",
-	},
-	"swift_charm": {
-		"name": "Swift Charm", "item_type": "accessory", "slot": "accessory", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_swift_charm.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"speed": 40.0},
-		"description": "A charm humming with wind magic. Greatly boosts movement speed.",
-	},
-	"hand_axe": {
-		"name": "Hand Axe", "item_type": "weapon", "slot": "weapon", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_hand_axe.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 3},
-		"description": "A sturdy one-handed axe, simple and reliable.",
-	},
-	"war_spear": {
-		"name": "War Spear", "item_type": "weapon", "slot": "weapon", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_war_spear.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 5, "stun_chance": 0.08},
-		"description": "A long spear built for staggering blows. 8% chance to stun on hit.",
-	},
-	"silver_rapier": {
-		"name": "Silver Rapier", "item_type": "weapon", "slot": "weapon", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_silver_rapier.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 5, "attack_speed": 0.10},
-		"description": "A light, glowing blade. +10% attack speed.",
-	},
-	"berserker_mace": {
-		"name": "Berserker Mace", "item_type": "weapon", "slot": "weapon", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_berserker_mace.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 8, "crit_chance": 0.12},
-		"description": "A brutal spiked mace. +12% chance to land a critical hit.",
-	},
-	"windcutter_bow": {
-		"name": "Windcutter Bow", "item_type": "weapon", "slot": "weapon", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_windcutter_bow.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"atk": 7, "attack_speed": 0.20},
-		"description": "An aerodynamic recurve bow. +20% attack speed.",
-	},
-	"padded_vest": {
-		"name": "Padded Vest", "item_type": "armor", "slot": "armor", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_padded_vest.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 2},
-		"description": "A simple padded vest offering modest protection.",
-	},
-	"hide_jerkin": {
-		"name": "Hide Jerkin", "item_type": "armor", "slot": "armor", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_hide_jerkin.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 1, "hp": 5},
-		"description": "Tough animal hide, light but slightly bolsters max HP.",
-	},
-	"ranger_cloak": {
-		"name": "Ranger Cloak", "item_type": "armor", "slot": "armor", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_ranger_cloak.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 3, "speed": 20.0},
-		"description": "A light traveler's cloak. Trades defense for mobility.",
-	},
-	"reinforced_mail": {
-		"name": "Reinforced Mail", "item_type": "armor", "slot": "armor", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_reinforced_mail.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 7},
-		"description": "Dense reinforced mail. Pure, dependable defense.",
-	},
-	"dragonscale_armor": {
-		"name": "Dragonscale Armor", "item_type": "armor", "slot": "armor", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_dragonscale_armor.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 8, "hp": 15},
-		"description": "Armor plated with dragon scales. Tough and vitalizing.",
-	},
-	"phantom_vest": {
-		"name": "Phantom Vest", "item_type": "armor", "slot": "armor", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_phantom_vest.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 6, "speed": 25.0},
-		"description": "Eerily light armor that barely slows you down.",
-	},
-	"iron_band": {
-		"name": "Iron Band", "item_type": "accessory", "slot": "accessory", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_iron_band.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"def": 2},
 		"description": "A plain iron ring, cool to the touch.",
 	},
-	"quick_charm": {
-		"name": "Quick Charm", "item_type": "accessory", "slot": "accessory", "rarity": "common", "color": COMMON_COLOR,
-		"icon": "res://assets/sprites/icon_quick_charm.png",
+	"sapphire_ring": {
+		"name": "Sapphire Ring", "item_type": "accessory", "slot": "accessory", "rarity": "rare", "color": RARE_COLOR,
+		"icon": "res://assets/sprites/icon_sapphire_ring.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"speed": 10.0},
-		"description": "A humming charm that lightens your step.",
+		"stats": {"hp": 15, "speed": 10.0},
+		"description": "A gem-set ring that fills you with vitality and a touch of swiftness.",
 	},
-	"ring_of_vigor": {
-		"name": "Ring of Vigor", "item_type": "accessory", "slot": "accessory", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_ring_of_vigor.png",
+	"void_ring": {
+		"name": "Void Ring", "item_type": "accessory", "slot": "accessory", "rarity": "epic", "color": EPIC_COLOR,
+		"icon": "res://assets/sprites/icon_void_ring.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"hp": 15},
-		"description": "A gem-set ring that fills you with vitality.",
+		"stats": {"crit_chance": 0.15, "attack_speed": 0.10, "hp": 8},
+		"description": "A ring humming with dark power. +15% crit chance, +10% attack speed.",
 	},
-	"berserker_talisman": {
-		"name": "Berserker Talisman", "item_type": "accessory", "slot": "accessory", "rarity": "rare", "color": RARE_COLOR,
-		"icon": "res://assets/sprites/icon_berserker_talisman.png",
+	"sovereigns_signet": {
+		"name": "Sovereign's Signet", "item_type": "accessory", "slot": "accessory", "rarity": "mythic", "color": MYTHIC_COLOR,
+		"icon": "res://assets/sprites/icon_sovereigns_signet.png",
 		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"crit_chance": 0.08},
-		"description": "A grim horned talisman. +8% chance to land a critical hit.",
-	},
-	"amulet_of_the_bear": {
-		"name": "Amulet of the Bear", "item_type": "accessory", "slot": "accessory", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_amulet_of_the_bear.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"hp": 30, "def": 3},
-		"description": "An ancient medallion radiating enduring strength.",
-	},
-	"assassins_signet": {
-		"name": "Assassin's Signet", "item_type": "accessory", "slot": "accessory", "rarity": "epic", "color": EPIC_COLOR,
-		"icon": "res://assets/sprites/icon_assassins_signet.png",
-		"stack_size": GEAR_STACK_SIZE,
-		"stats": {"crit_chance": 0.15, "attack_speed": 0.10},
-		"description": "A sleek pendant favored by assassins. +15% crit chance, +10% attack speed.",
+		"stats": {"crit_chance": 0.25, "attack_speed": 0.18, "hp": 20, "speed": 15.0},
+		"description": "Reforged with the Withered Sovereign's essence. +25% crit chance, +18% attack speed, and a surge of vitality and swiftness.",
 	},
 	"healing_potion": {
 		"name": "Healing Potion", "item_type": "consumable", "category": "heal", "rarity": "common", "color": COMMON_COLOR,
@@ -268,6 +164,20 @@ const GUARDIAN_RARITY_WEIGHTS_BY_TIER := {
 	3: {"rare": 0.15, "epic": 0.85},
 }
 
+# Mythic gear is New Game+ only -- a reason to keep replaying the harder
+# final boss beyond the bigger numbers. allow_mythic is only ever passed
+# true from the true final boss's drop roll (see ultimate_boss.gd), never
+# from regular gate bosses/guardians, so it stays a final-boss-only carrot.
+const MYTHIC_DROP_CHANCE := 0.5
+
+# Every gear item's authored `stats` value is the ceiling of what that item
+# can roll, not a fixed number -- an actual drop lands somewhere in
+# [STAT_ROLL_MIN_RATIO * base, base] per stat, independently per stat (see
+# roll_stats()). 0.6 means a "def: 5" item can roll as low as 3, matching
+# the reference example this was designed from.
+const STAT_ROLL_MIN_RATIO := 0.6
+const INT_STATS := ["atk", "def", "hp"]
+
 
 static func get_item(id: String) -> Dictionary:
 	return ITEMS.get(id, {})
@@ -275,6 +185,39 @@ static func get_item(id: String) -> Dictionary:
 
 static func get_stat(id: String, stat_name: String) -> float:
 	return ITEMS.get(id, {}).get("stats", {}).get(stat_name, 0)
+
+
+static func roll_stats(id: String) -> Dictionary:
+	var base: Dictionary = ITEMS.get(id, {}).get("stats", {})
+	var rolled := {}
+	for key in base.keys():
+		var max_val: float = base[key]
+		var min_val: float = max_val * STAT_ROLL_MIN_RATIO
+		var value := randf_range(min_val, max_val)
+		if key in INT_STATS:
+			rolled[key] = roundi(value)
+		elif key == "speed":
+			rolled[key] = roundf(value)
+		else:
+			rolled[key] = roundf(value * 100.0) / 100.0
+	return rolled
+
+
+# Mean of each stat's position within its own [min, max] roll range (0 =
+# worst possible roll, 1 = best) -- lets two rolls of the same item be
+# compared on a common scale even though their stats (atk vs crit_chance
+# vs hp) aren't otherwise comparable numbers.
+static func roll_power_ratio(id: String, rolled: Dictionary) -> float:
+	var base: Dictionary = ITEMS.get(id, {}).get("stats", {})
+	if base.is_empty():
+		return 0.0
+	var total := 0.0
+	for key in base.keys():
+		var max_val: float = base[key]
+		var min_val: float = max_val * STAT_ROLL_MIN_RATIO
+		var value: float = rolled.get(key, min_val)
+		total += 1.0 if max_val == min_val else (value - min_val) / (max_val - min_val)
+	return total / base.size()
 
 
 static func _roll_item_by_rarity(rarity: String) -> String:
@@ -306,7 +249,9 @@ static func roll_random_item_id(map_tier: int = 1) -> String:
 	return _roll_item_by_rarity(_pick_rarity(weights))
 
 
-static func roll_guardian_drop(map_tier: int = 1) -> String:
+static func roll_guardian_drop(map_tier: int = 1, allow_mythic: bool = false) -> String:
+	if allow_mythic and randf() < MYTHIC_DROP_CHANCE:
+		return _roll_item_by_rarity("mythic")
 	var weights: Dictionary = GUARDIAN_RARITY_WEIGHTS_BY_TIER.get(map_tier, GUARDIAN_RARITY_WEIGHTS_BY_TIER[1])
 	return _roll_item_by_rarity(_pick_rarity(weights))
 

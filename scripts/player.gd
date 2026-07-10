@@ -56,7 +56,6 @@ const CHARACTER_DATA := {
 @onready var death_countdown_label: Label = $DeathScreen/Center/VBox/CountdownLabel
 @onready var victory_screen: CanvasLayer = $VictoryScreen
 @onready var victory_info_label: Label = $VictoryScreen/Center/VBox/InfoLabel
-@onready var new_game_plus_button: Button = $VictoryScreen/Center/VBox/NewGamePlusButton
 @onready var ng_plus_label: Label = $HUD/Margin/VBox/NGPlusLabel
 @onready var zoom_button: Button = $MinimapLayer/ZoomButton
 @onready var auto_attack_button: Button = $MinimapLayer/AutoAttackButton
@@ -120,7 +119,6 @@ func _ready() -> void:
 	_apply_camera_zoom()
 	auto_attack_button.pressed.connect(_on_auto_attack_button_pressed)
 	_update_auto_attack_button_text()
-	new_game_plus_button.pressed.connect(_on_new_game_plus_pressed)
 	ng_plus_label.visible = GlobalState.ng_plus_level > 0
 	if ng_plus_label.visible:
 		ng_plus_label.text = "NG+%d" % GlobalState.ng_plus_level
@@ -758,7 +756,7 @@ func _total_hp_bonus() -> int:
 	for slot in GlobalState.equipped.keys():
 		var item_id: String = GlobalState.equipped[slot]
 		if item_id != "":
-			total += int(ItemDatabase.get_stat(item_id, "hp"))
+			total += int(GlobalState.get_rolled_stat(item_id, "hp"))
 	return total
 
 
@@ -773,12 +771,12 @@ func _recalculate_equipment_stats() -> void:
 		var item_id: String = GlobalState.equipped[slot]
 		if item_id == "":
 			continue
-		atk += int(ItemDatabase.get_stat(item_id, "atk"))
-		def += int(ItemDatabase.get_stat(item_id, "def"))
-		crit += ItemDatabase.get_stat(item_id, "crit_chance")
-		stun += ItemDatabase.get_stat(item_id, "stun_chance")
-		atk_speed += ItemDatabase.get_stat(item_id, "attack_speed")
-		spd += ItemDatabase.get_stat(item_id, "speed")
+		atk += int(GlobalState.get_rolled_stat(item_id, "atk"))
+		def += int(GlobalState.get_rolled_stat(item_id, "def"))
+		crit += GlobalState.get_rolled_stat(item_id, "crit_chance")
+		stun += GlobalState.get_rolled_stat(item_id, "stun_chance")
+		atk_speed += GlobalState.get_rolled_stat(item_id, "attack_speed")
+		spd += GlobalState.get_rolled_stat(item_id, "speed")
 	weapon_atk_bonus = atk
 	defense = def
 	crit_chance = crit

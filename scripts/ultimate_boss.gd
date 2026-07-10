@@ -18,9 +18,9 @@ const CHASE_STOP_DISTANCE := 35.0
 const PHASE2_HP_RATIO := 0.6
 const PHASE3_HP_RATIO := 0.3
 # Calibrated so a level-35 player at the best gear obtainable by this point
-# (windcutter_bow + assassins_signet -> ~180.7 DPS) needs ~60s to clear
+# (roughly cursed_runebow + void_ring -> ~180 DPS) needs ~60s to clear
 # 10840 HP (see docs/PROJECT_SUMMARY.md for the full derivation). Damage is
-# calibrated the other way: at ~387 effective HP (dragonscale_armor's +15),
+# calibrated the other way: at ~387 effective HP (voidscale_armor's +15),
 # a Phase 1 hit reduced by 8 defense takes ~10 unhealed hits to kill the
 # player, escalating to ~5 hits by Phase 3.
 const PHASE_ATTACK_DAMAGE := [45, 65, 90]
@@ -266,7 +266,7 @@ func _grant_rewards(player: Node) -> void:
 func _try_drop_item() -> void:
 	if randf() >= drop_chance:
 		return
-	var item_id: String = ItemDatabase.roll_guardian_drop(3)
+	var item_id: String = ItemDatabase.roll_guardian_drop(3, GlobalState.ng_plus_level > 0)
 	if item_id == "":
 		return
 	var pickup := preload("res://scenes/item_pickup.tscn").instantiate()
