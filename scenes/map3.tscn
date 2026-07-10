@@ -92,6 +92,8 @@ min_level = 23
 max_level = 28
 body_tint = Color(0.45, 0.25, 0.55, 1)
 map_tier = 3
+avoid_position = Vector2(1700, 300)
+avoid_radius = 400.0
 
 [node name="ZombieSpawner" type="Node2D" parent="."]
 script = ExtResource("2")
@@ -105,6 +107,8 @@ max_level = 28
 species = "zombie"
 body_tint = Color(0.55, 0.65, 0.35, 1)
 map_tier = 3
+avoid_position = Vector2(1700, 300)
+avoid_radius = 400.0
 
 [node name="Tree1" parent="." instance=ExtResource("3")]
 position = Vector2(120, 150)
@@ -235,12 +239,15 @@ wander_radius = 20.0
 drop_chance = 1.0
 is_guardian = true
 gate_boss_id = "gate3_boss"
-bonus_max_health = 4949
+bonus_max_health = 3434
 bonus_attack_damage = 66
+bonus_drop_item_id = "healing_potion"
+bonus_drop_amount = 15
 map_tier = 3
 
 [node name="Gate" parent="." instance=ExtResource("15")]
 position = Vector2(1830, 900)
-required_level = 35
+required_level = 1
 next_map_path = "res://scenes/map4.tscn"
 required_boss_id = "gate3_boss"
+label_text_override = "Defeat the Dragon Sovereign"

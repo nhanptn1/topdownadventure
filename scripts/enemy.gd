@@ -233,6 +233,14 @@ func apply_stun(duration: float) -> void:
 func _on_wander_timer_timeout() -> void:
 	if state != State.IDLE:
 		return
+	if is_final_boss or gate_boss_id != "" or is_guardian:
+		# Boss-tier enemies hold their placed position instead of wandering --
+		# wander targets are picked blindly with no obstacle check, and a boss
+		# arena's decor (rocks/mountains) sits close enough to a boss's small
+		# wander_radius that it would repeatedly aim itself into a rock and
+		# grind against it forever without ever reaching the target.
+		_schedule_next_wander()
+		return
 	var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 	if offset.length() < 0.01:
 		offset = Vector2.RIGHT
@@ -288,6 +296,12 @@ func _on_detection_body_exited(body: Node) -> void:
 		potential_target = null
 		velocity = Vector2.ZERO
 		_schedule_next_wander()
+		# Boss-tier enemies reset to full HP once the player leaves detection
+		# range too, not just on player death/respawn -- otherwise chipping
+		# a boss down then retreating (to heal, reposition, or bail on a bad
+		# pull) banks permanent progress on the fight for free.
+		if is_final_boss or gate_boss_id != "" or is_guardian:
+			restore_full_health()
 
 
 func _on_attack_body_entered(body: Node) -> void:
@@ -295,7 +309,8 @@ func _on_attack_body_entered(body: Node) -> void:
 		return
 	if body.is_in_group("player") and body.has_method("take_damage"):
 		in_attack_range = true
-		body.take_damage(attack_damage)
+		if not is_stunned:
+			body.take_damage(attack_damage)
 		attack_timer.start()
 
 
@@ -306,6 +321,8 @@ func _on_attack_body_exited(body: Node) -> void:
 
 
 func _on_attack_timer_timeout() -> void:
+	if is_stunned:
+		return
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player) and player.has_method("take_damage"):
 		player.take_damage(attack_damage)

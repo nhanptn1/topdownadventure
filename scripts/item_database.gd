@@ -200,7 +200,7 @@ const ITEMS := {
 	"healing_potion": {
 		"name": "Healing Potion", "item_type": "consumable", "category": "heal", "rarity": "common", "color": COMMON_COLOR,
 		"icon": "res://assets/sprites/icon_healing_potion.png",
-		"stack_size": 10, "cooldown": 3.0, "use_action": "heal",
+		"stack_size": 20, "cooldown": 3.0, "use_action": "heal",
 		"stats": {"heal_amount": 30},
 		"description": "Restores 30 HP instantly.",
 	},
@@ -248,11 +248,11 @@ const ITEMS := {
 	},
 }
 
-const CONSUMABLE_IDS := ["healing_potion", "healing_potion", "fire_bomb", "swift_tonic"]
+const CONSUMABLE_IDS := ["healing_potion", "healing_potion", "healing_potion", "fire_bomb", "swift_tonic"]
 const MATERIAL_IDS := ["dragon_scale", "iron_ingot", "ruby_gem"]
 
 const SLOTS := ["weapon", "armor", "accessory"]
-const CATEGORY_WEIGHTS := {"gear": 0.65, "consumable": 0.30, "material": 0.05}
+const CATEGORY_WEIGHTS := {"gear": 0.55, "consumable": 0.40, "material": 0.05}
 
 # Per-map-tier rarity gates: Map 1 (white/blue only, no epic), Map 2 (blue +
 # a low chance of epic), Map 3 (epic dominant, full rarity range unlocked).

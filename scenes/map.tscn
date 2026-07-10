@@ -90,6 +90,8 @@ dragon_count = 8
 respawn_delay = 10.0
 min_level = 3
 max_level = 8
+avoid_position = Vector2(1700, 530)
+avoid_radius = 350.0
 
 [node name="SlimeSpawner" type="Node2D" parent="."]
 script = ExtResource("2")
@@ -101,6 +103,8 @@ is_aggressive = false
 min_level = 1
 max_level = 3
 species = "slime"
+avoid_position = Vector2(1700, 530)
+avoid_radius = 350.0
 
 [node name="ZombieSpawner" type="Node2D" parent="."]
 script = ExtResource("2")
@@ -112,6 +116,8 @@ is_aggressive = true
 min_level = 4
 max_level = 8
 species = "zombie"
+avoid_position = Vector2(1700, 530)
+avoid_radius = 350.0
 
 [node name="Gate" parent="." instance=ExtResource("3")]
 position = Vector2(1781, 600)
@@ -130,10 +136,10 @@ wander_radius = 20.0
 drop_chance = 1.0
 is_guardian = true
 gate_boss_id = "gate1_boss"
-bonus_max_health = 2080
+bonus_max_health = 1441
 bonus_attack_damage = 32
 bonus_drop_item_id = "healing_potion"
-bonus_drop_amount = 10
+bonus_drop_amount = 15
 
 [node name="Tree1" parent="." instance=ExtResource("4")]
 position = Vector2(150, 150)

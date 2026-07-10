@@ -22,6 +22,8 @@ const MAX_PLACEMENT_ATTEMPTS := 24
 @export var bonus_max_health: int = 0
 @export var bonus_attack_damage: int = 0
 @export var map_tier: int = 1
+@export var avoid_position: Vector2 = Vector2.ZERO
+@export var avoid_radius: float = 0.0
 
 
 func _ready() -> void:
@@ -66,6 +68,8 @@ func _find_spawn_position() -> Vector2:
 			randf_range(spawn_margin, map_size.y - spawn_margin)
 		)
 		if is_instance_valid(player) and candidate.distance_to(player.global_position) < min_player_distance:
+			continue
+		if avoid_radius > 0.0 and candidate.distance_to(avoid_position) < avoid_radius:
 			continue
 		var shape := CircleShape2D.new()
 		shape.radius = BODY_QUERY_RADIUS
