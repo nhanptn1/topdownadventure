@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
 [ext_resource type="Texture2D" path="res://assets/sprites/tile_stone.png" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ultimate_boss.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/decor_rock.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/decor_mountain.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/gate.tscn" id="7"]
 
 [sub_resource type="RectangleShape2D" id="WallHoriz"]
 size = Vector2(1200, 32)
@@ -72,6 +73,12 @@ position = Vector2(200, 450)
 
 [node name="SpawnPoint" parent="." instance=ExtResource("3")]
 position = Vector2(200, 450)
+
+[node name="ReturnGate" parent="." instance=ExtResource("7")]
+position = Vector2(100, 600)
+required_level = 1
+next_map_path = "res://scenes/map3.tscn"
+label_text_override = "Retreat to Map 3"
 
 [node name="UltimateBoss" parent="." instance=ExtResource("4")]
 position = Vector2(950, 450)

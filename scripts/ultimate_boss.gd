@@ -5,11 +5,15 @@ extends CharacterBody2D
 # the user supplied (see plan/final-boss-gd.txt): phases are driven by HP%
 # instead of a fixed timeline, each phase hits harder and faster, and phase
 # transitions get a short "juice" beat (time-freeze + shake + scale pulse).
-# Unlike EnemyBase this boss doesn't chase/wander -- it holds its arena
-# position and punishes the player for standing in melee range, same as the
-# existing Dragon Sovereign/gate bosses.
+# Actively closes in on the player the whole time they're in the arena --
+# unlike the gate bosses (which mostly hold position with a tiny wander),
+# this is the one fight with nowhere to kite forever, so it keeps pressure
+# on rather than waiting at a fixed spot.
 
 enum Phase { PHASE_1, PHASE_2, PHASE_3, DEAD }
+
+const CHASE_SPEED := 90.0
+const CHASE_STOP_DISTANCE := 70.0
 
 const PHASE2_HP_RATIO := 0.6
 const PHASE3_HP_RATIO := 0.3
@@ -23,6 +27,14 @@ const PHASE_ATTACK_DAMAGE := [45, 65, 90]
 const PHASE_ATTACK_INTERVAL := [1.7, 1.2, 0.8]
 const HIT_FLASH_DURATION := 0.1
 const DEATH_FRAME_TIME := 0.12
+
+# The "enraged" animation (Phase 2+) visually casts a bolt on frame 6 (0-
+# indexed) -- an arm-extended orb the frame before, then the actual burst
+# releases here. Firing off frame_changed instead of an independent timer
+# keeps the shot locked to what's on screen instead of drifting out of sync.
+const RANGED_CAST_FRAME := 6
+const RANGED_DAMAGE_FACTOR := 0.6
+const RANGED_PROJECTILE_SPEED := 260.0
 
 @export var animal_name: String = "The Withered Sovereign"
 @export var max_health: int = 10840
@@ -66,6 +78,24 @@ func _ready() -> void:
 	attack_area.body_exited.connect(_on_attack_body_exited)
 	attack_timer.timeout.connect(_on_attack_timer_timeout)
 	attack_timer.wait_time = PHASE_ATTACK_INTERVAL[Phase.PHASE_1]
+	sprite.frame_changed.connect(_on_sprite_frame_changed)
+
+
+func _physics_process(_delta: float) -> void:
+	if phase == Phase.DEAD:
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	if not is_instance_valid(player):
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return
+	var to_player = player.global_position - global_position
+	if to_player.length() > CHASE_STOP_DISTANCE:
+		velocity = to_player.normalized() * CHASE_SPEED
+		sprite.flip_h = to_player.x < 0.0
+	else:
+		velocity = Vector2.ZERO
+	move_and_slide()
 
 
 func _build_sprite_frames() -> void:
@@ -106,6 +136,27 @@ func _on_attack_timer_timeout() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player) and player.has_method("take_damage"):
 		player.take_damage(PHASE_ATTACK_DAMAGE[phase])
+
+
+func _on_sprite_frame_changed() -> void:
+	if phase == Phase.DEAD:
+		return
+	if sprite.animation == "enraged" and sprite.frame == RANGED_CAST_FRAME:
+		_fire_ranged_attack()
+
+
+func _fire_ranged_attack() -> void:
+	var player := get_tree().get_first_node_in_group("player")
+	if not is_instance_valid(player):
+		return
+	var dir: Vector2 = (player.global_position - global_position).normalized()
+	var proj := preload("res://scenes/boss_projectile.tscn").instantiate()
+	proj.direction = dir
+	proj.speed = RANGED_PROJECTILE_SPEED
+	proj.damage = roundi(PHASE_ATTACK_DAMAGE[phase] * RANGED_DAMAGE_FACTOR)
+	proj.global_position = global_position
+	get_tree().current_scene.add_child(proj)
+	AudioManager.play("attack")
 
 
 func take_damage(amount: int, is_crit: bool = false) -> void:
