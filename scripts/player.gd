@@ -57,6 +57,7 @@ const CHARACTER_DATA := {
 @onready var victory_screen: CanvasLayer = $VictoryScreen
 @onready var victory_info_label: Label = $VictoryScreen/Center/VBox/InfoLabel
 @onready var zoom_button: Button = $MinimapLayer/ZoomButton
+@onready var auto_attack_button: Button = $MinimapLayer/AutoAttackButton
 @onready var quick_slot_heal_label: Label = $HUD/Margin/VBox/QuickSlotBar/Heal/Label
 @onready var quick_slot_throwable_label: Label = $HUD/Margin/VBox/QuickSlotBar/Throwable/Label
 @onready var quick_slot_buff_label: Label = $HUD/Margin/VBox/QuickSlotBar/Buff/Label
@@ -115,6 +116,8 @@ func _ready() -> void:
 	sprite.play(_resolve_anim("idle"))
 	aim_indicator.rotation = facing_direction.angle()
 	_apply_camera_zoom()
+	auto_attack_button.pressed.connect(_on_auto_attack_button_pressed)
+	_update_auto_attack_button_text()
 	_update_hud()
 
 
@@ -266,6 +269,20 @@ func _on_zoom_button_pressed() -> void:
 	GlobalState.save_game()
 
 
+func _update_auto_attack_button_text() -> void:
+	auto_attack_button.text = "Auto-Attack: ON" if GlobalState.auto_attack_enabled else "Auto-Attack: OFF"
+
+
+func _on_auto_attack_button_pressed() -> void:
+	GlobalState.auto_attack_enabled = not GlobalState.auto_attack_enabled
+	_update_auto_attack_button_text()
+	GlobalState.save_game()
+	# If we just turned it on and the weapon is already off cooldown, fire
+	# right away instead of waiting for a cooldown timer that isn't running.
+	if GlobalState.auto_attack_enabled and can_attack and not is_dead:
+		_try_attack()
+
+
 func _step_zoom(direction: int) -> void:
 	var current_index := ZOOM_LEVELS.find(GlobalState.camera_zoom)
 	if current_index == -1:
@@ -326,6 +343,8 @@ func _on_sprite_animation_finished() -> void:
 
 func _on_attack_cooldown_timeout() -> void:
 	can_attack = true
+	if GlobalState.auto_attack_enabled and not is_dead:
+		_try_attack()
 
 
 func total_attack_damage() -> int:

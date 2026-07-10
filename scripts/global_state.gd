@@ -12,6 +12,7 @@ var player_health: int = 100
 var boss_defeated: bool = false
 var defeated_gate_bosses: Array = []
 var camera_zoom: float = 1.3
+var auto_attack_enabled: bool = false
 
 var storage: Dictionary = {}
 var equipped := {"weapon": "", "armor": "", "accessory": ""}
@@ -52,6 +53,7 @@ func save_game() -> void:
 		"boss_defeated": boss_defeated,
 		"defeated_gate_bosses": defeated_gate_bosses,
 		"camera_zoom": camera_zoom,
+		"auto_attack_enabled": auto_attack_enabled,
 		"storage": storage,
 		"equipped": equipped,
 		"quick_slots": quick_slots,
@@ -97,6 +99,7 @@ func load_game() -> bool:
 		if typeof(entry) == TYPE_STRING:
 			defeated_gate_bosses.append(entry)
 	camera_zoom = float(parsed.get("camera_zoom", camera_zoom))
+	auto_attack_enabled = bool(parsed.get("auto_attack_enabled", auto_attack_enabled))
 	storage = {}
 	for key in loaded_storage.keys():
 		storage[key] = int(loaded_storage[key])

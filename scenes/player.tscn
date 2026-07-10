@@ -181,6 +181,17 @@ theme_override_font_sizes/font_size = 14
 tooltip_text = "Toggle camera zoom (or scroll the mouse wheel)"
 text = "Zoom: 1.3x"
 
+[node name="AutoAttackButton" type="Button" parent="MinimapLayer"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -166.0
+offset_top = 160.0
+offset_right = -16.0
+offset_bottom = 196.0
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Toggle auto-attack (fires on its own instead of needing repeated clicks)"
+text = "Auto-Attack: OFF"
+
 [node name="InventoryUI" parent="." instance=ExtResource("3")]
 
 [node name="EquipPromptDialog" type="ConfirmationDialog" parent="."]
