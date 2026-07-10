@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/dragon_spawner.gd" id="2"]
@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://scenes/decor_tree_oak.tscn" id="12"]
 [ext_resource type="PackedScene" path="res://scenes/decor_tree_birch.tscn" id="13"]
 [ext_resource type="PackedScene" path="res://scenes/decor_tree_pine.tscn" id="14"]
+[ext_resource type="PackedScene" path="res://scenes/gate.tscn" id="15"]
 
 [sub_resource type="RectangleShape2D" id="WallHoriz"]
 size = Vector2(1920, 32)
@@ -90,6 +91,7 @@ animal_name = "Ancient Dragon"
 min_level = 23
 max_level = 28
 body_tint = Color(0.45, 0.25, 0.55, 1)
+map_tier = 3
 
 [node name="ZombieSpawner" type="Node2D" parent="."]
 script = ExtResource("2")
@@ -102,6 +104,7 @@ min_level = 23
 max_level = 28
 species = "zombie"
 body_tint = Color(0.55, 0.65, 0.35, 1)
+map_tier = 3
 
 [node name="Tree1" parent="." instance=ExtResource("3")]
 position = Vector2(120, 150)
@@ -230,4 +233,14 @@ max_level = 32
 body_tint = Color(0.25, 0.05, 0.05, 1)
 wander_radius = 20.0
 drop_chance = 1.0
-is_final_boss = true
+is_guardian = true
+gate_boss_id = "gate3_boss"
+bonus_max_health = 4949
+bonus_attack_damage = 66
+map_tier = 3
+
+[node name="Gate" parent="." instance=ExtResource("15")]
+position = Vector2(1830, 900)
+required_level = 35
+next_map_path = "res://scenes/map4.tscn"
+required_boss_id = "gate3_boss"

@@ -55,8 +55,10 @@ const SPECIES_DATA := {
 @export var gate_boss_id: String = ""
 @export var is_guardian: bool = false
 @export var bonus_max_health: int = 0
+@export var bonus_attack_damage: int = 0
 @export var bonus_drop_item_id: String = ""
 @export var bonus_drop_amount: int = 0
+@export var map_tier: int = 1
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var detection_area: Area2D = $DetectionArea
@@ -97,7 +99,7 @@ func _ready() -> void:
 	species_data = SPECIES_DATA.get(species, SPECIES_DATA["dragon"])
 	level = randi_range(min_level, max_level)
 	max_health = BASE_HP + HP_PER_LEVEL * (level - 1) + bonus_max_health
-	attack_damage = BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1)
+	attack_damage = BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1) + bonus_attack_damage
 	health = max_health
 	if is_final_boss or gate_boss_id != "":
 		level_label.text = "%s — Lv. %d" % [animal_name, level]
@@ -376,7 +378,7 @@ func _die() -> void:
 func _try_drop_item() -> void:
 	if randf() >= drop_chance:
 		return
-	var item_id := ItemDatabase.roll_guardian_drop() if is_guardian else ItemDatabase.roll_random_drop()
+	var item_id := ItemDatabase.roll_guardian_drop(map_tier) if is_guardian else ItemDatabase.roll_random_drop(map_tier)
 	if item_id == "":
 		return
 	var pickup := preload("res://scenes/item_pickup.tscn").instantiate()

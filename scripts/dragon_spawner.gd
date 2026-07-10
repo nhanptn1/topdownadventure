@@ -19,6 +19,9 @@ const MAX_PLACEMENT_ATTEMPTS := 24
 @export var drop_chance: float = 0.35
 @export var is_guardian: bool = false
 @export var enemy_scale: float = 1.0
+@export var bonus_max_health: int = 0
+@export var bonus_attack_damage: int = 0
+@export var map_tier: int = 1
 
 
 func _ready() -> void:
@@ -41,6 +44,9 @@ func _spawn_dragon() -> void:
 	dragon.wander_radius = wander_radius
 	dragon.drop_chance = drop_chance
 	dragon.is_guardian = is_guardian
+	dragon.bonus_max_health = bonus_max_health
+	dragon.bonus_attack_damage = bonus_attack_damage
+	dragon.map_tier = map_tier
 	dragon.scale = Vector2(enemy_scale, enemy_scale)
 	dragon.global_position = _find_spawn_position()
 	add_child(dragon)

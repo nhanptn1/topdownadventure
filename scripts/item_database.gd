@@ -251,10 +251,22 @@ const ITEMS := {
 const CONSUMABLE_IDS := ["healing_potion", "healing_potion", "fire_bomb", "swift_tonic"]
 const MATERIAL_IDS := ["dragon_scale", "iron_ingot", "ruby_gem"]
 
-const RARITY_WEIGHTS := {"common": 0.55, "rare": 0.3, "epic": 0.15}
-const GUARDIAN_RARITY_WEIGHTS := {"epic": 0.5, "rare": 0.5}
 const SLOTS := ["weapon", "armor", "accessory"]
 const CATEGORY_WEIGHTS := {"gear": 0.65, "consumable": 0.30, "material": 0.05}
+
+# Per-map-tier rarity gates: Map 1 (white/blue only, no epic), Map 2 (blue +
+# a low chance of epic), Map 3 (epic dominant, full rarity range unlocked).
+# Keys are iterated in insertion order for the cumulative roll below.
+const RARITY_WEIGHTS_BY_TIER := {
+	1: {"common": 0.7, "rare": 0.3},
+	2: {"rare": 0.75, "epic": 0.25},
+	3: {"rare": 0.3, "epic": 0.7},
+}
+const GUARDIAN_RARITY_WEIGHTS_BY_TIER := {
+	1: {"rare": 1.0},
+	2: {"rare": 0.6, "epic": 0.4},
+	3: {"rare": 0.15, "epic": 0.85},
+}
 
 
 static func get_item(id: String) -> Dictionary:
@@ -277,29 +289,33 @@ static func _roll_item_by_rarity(rarity: String) -> String:
 	return matches[randi() % matches.size()]
 
 
-static func roll_random_item_id() -> String:
+static func _pick_rarity(weights: Dictionary) -> String:
 	var roll := randf()
-	var rarity := "common"
-	if roll < RARITY_WEIGHTS["epic"]:
-		rarity = "epic"
-	elif roll < RARITY_WEIGHTS["epic"] + RARITY_WEIGHTS["rare"]:
-		rarity = "rare"
-	return _roll_item_by_rarity(rarity)
+	var cumulative := 0.0
+	var last_rarity := "common"
+	for rarity in weights.keys():
+		cumulative += weights[rarity]
+		last_rarity = rarity
+		if roll < cumulative:
+			return rarity
+	return last_rarity  # float rounding fallback: just use the last tier in the table
 
 
-static func roll_guardian_drop() -> String:
-	var roll := randf()
-	var rarity := "rare"
-	if roll < GUARDIAN_RARITY_WEIGHTS["epic"]:
-		rarity = "epic"
-	return _roll_item_by_rarity(rarity)
+static func roll_random_item_id(map_tier: int = 1) -> String:
+	var weights: Dictionary = RARITY_WEIGHTS_BY_TIER.get(map_tier, RARITY_WEIGHTS_BY_TIER[1])
+	return _roll_item_by_rarity(_pick_rarity(weights))
 
 
-static func roll_random_drop() -> String:
+static func roll_guardian_drop(map_tier: int = 1) -> String:
+	var weights: Dictionary = GUARDIAN_RARITY_WEIGHTS_BY_TIER.get(map_tier, GUARDIAN_RARITY_WEIGHTS_BY_TIER[1])
+	return _roll_item_by_rarity(_pick_rarity(weights))
+
+
+static func roll_random_drop(map_tier: int = 1) -> String:
 	var roll := randf()
 	if roll < CATEGORY_WEIGHTS["material"]:
 		return MATERIAL_IDS[randi() % MATERIAL_IDS.size()]
 	elif roll < CATEGORY_WEIGHTS["material"] + CATEGORY_WEIGHTS["consumable"]:
 		return CONSUMABLE_IDS[randi() % CONSUMABLE_IDS.size()]
 	else:
-		return roll_random_item_id()
+		return roll_random_item_id(map_tier)

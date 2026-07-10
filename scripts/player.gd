@@ -3,6 +3,9 @@ extends CharacterBody2D
 const SPEED := 220.0
 const SPRINT_MULTIPLIER := 1.6
 const MAX_LEVEL := 100
+const XP_REQUIREMENT_MULTIPLIER := 3.0
+const HIGH_LEVEL_XP_THRESHOLD := 20
+const HIGH_LEVEL_XP_SURCHARGE := 0.1
 const BASE_MAX_HEALTH := 100
 const HP_PER_LEVEL := 8
 const BASE_ATTACK_DAMAGE := 3
@@ -47,6 +50,7 @@ const CHARACTER_DATA := {
 @onready var hud_xp_label: Label = $HUD/Margin/VBox/XPLabel
 @onready var hud_xp_bar: ProgressBar = $HUD/Margin/VBox/XPBarUI
 @onready var inventory_ui: CanvasLayer = $InventoryUI
+@onready var equip_prompt: ConfirmationDialog = $EquipPromptDialog
 @onready var death_screen: CanvasLayer = $DeathScreen
 @onready var death_info_label: Label = $DeathScreen/Center/VBox/InfoLabel
 @onready var death_countdown_label: Label = $DeathScreen/Center/VBox/CountdownLabel
@@ -82,6 +86,12 @@ var buff_speed_bonus := 0.0
 var _buff_speed_token := 0
 var quick_slot_cooldowns := {"heal": 0.0, "throwable": 0.0, "buff": 0.0}
 
+const RARITY_RANK := {"common": 0, "rare": 1, "epic": 2}
+# Consumable categories that auto-fill their quick slot on pickup instead of
+# requiring a trip to the bag (HP potion, speed tonic, bombs).
+const AUTO_QUICK_SLOT_CATEGORIES := ["heal", "buff", "throwable"]
+var _pending_equip_id := ""
+
 var _shake_strength := 0.0
 var _quick_slot_display_timer := 0.0
 
@@ -95,6 +105,11 @@ func _ready() -> void:
 	character_data = CHARACTER_DATA.get(GlobalState.selected_character, CHARACTER_DATA["warrior"])
 	_recalculate_equipment_stats()
 	attack_cooldown.timeout.connect(_on_attack_cooldown_timeout)
+	equip_prompt.confirmed.connect(_on_equip_prompt_confirmed)
+	equip_prompt.canceled.connect(_on_equip_prompt_canceled)
+	equip_prompt.visibility_changed.connect(_on_equip_prompt_visibility_changed)
+	equip_prompt.get_ok_button().text = "Equip"
+	equip_prompt.get_cancel_button().text = "Not now"
 	_setup_sprite_frames()
 	sprite.animation_finished.connect(_on_sprite_animation_finished)
 	sprite.play(_resolve_anim("idle"))
@@ -218,6 +233,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_attack()
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_I:
 		_open_inventory()
+	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_B:
+		_open_inventory()
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_1:
 		_use_quick_slot("heal")
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_2:
@@ -316,7 +333,12 @@ func total_attack_damage() -> int:
 
 
 func xp_to_next_level() -> int:
-	return 15 + (level - 1) * 10
+	# x3 across the board to slow overall leveling pace, plus an extra
+	# per-level surcharge past 20 so high levels take noticeably longer still.
+	var required := float(15 + (level - 1) * 10) * XP_REQUIREMENT_MULTIPLIER
+	if level > HIGH_LEVEL_XP_THRESHOLD:
+		required *= 1.0 + (level - HIGH_LEVEL_XP_THRESHOLD) * HIGH_LEVEL_XP_SURCHARGE
+	return roundi(required)
 
 
 func _xp_penalty_multiplier(source_level: int) -> float:
@@ -439,7 +461,7 @@ func _restore_boss_and_guardian_health() -> void:
 
 func trigger_victory() -> void:
 	AudioManager.play("victory")
-	victory_info_label.text = "You reached Level %d as the Dragon Sovereign's slayer" % level
+	victory_info_label.text = "You reached Level %d as the slayer of The Withered Sovereign" % level
 	victory_screen.visible = true
 	get_tree().paused = true
 
@@ -453,11 +475,66 @@ func add_item_to_inventory(item_id: String, amount: int = 1) -> bool:
 	var added := GlobalState.storage_add(item_id, amount)
 	if added == 0:
 		return false
+	_maybe_auto_assign_quick_slot(item_id)
+	_maybe_prompt_equip(item_id)
 	if inventory_ui.visible:
 		inventory_ui.refresh()
 	_update_quick_slot_cooldown_display()
 	GlobalState.save_game()
 	return true
+
+
+func _maybe_auto_assign_quick_slot(item_id: String) -> void:
+	var item := ItemDatabase.get_item(item_id)
+	var category: String = item.get("category", "")
+	if not AUTO_QUICK_SLOT_CATEGORIES.has(category):
+		return
+	if GlobalState.quick_slots.get(category, "") == "":
+		GlobalState.quick_slots[category] = item_id
+
+
+func _maybe_prompt_equip(item_id: String) -> void:
+	var item := ItemDatabase.get_item(item_id)
+	var slot: String = item.get("slot", "")
+	if slot == "":
+		return  # not equippable gear (consumable/material/quest item)
+	var equipped_id: String = GlobalState.equipped.get(slot, "")
+	var is_upgrade := false
+	if equipped_id == "":
+		is_upgrade = true
+	else:
+		var current_rarity: String = ItemDatabase.get_item(equipped_id).get("rarity", "common")
+		var new_rarity: String = item.get("rarity", "common")
+		is_upgrade = RARITY_RANK.get(new_rarity, 0) > RARITY_RANK.get(current_rarity, 0)
+	if not is_upgrade:
+		return
+	_pending_equip_id = item_id
+	var verb := "Equip" if equipped_id == "" else "Equip upgrade"
+	equip_prompt.dialog_text = "%s: %s (%s)?" % [verb, item.get("name", "?"), str(item.get("rarity", "common")).capitalize()]
+	get_tree().paused = true
+	equip_prompt.popup_centered()
+
+
+func _on_equip_prompt_confirmed() -> void:
+	if _pending_equip_id != "":
+		equip_item(_pending_equip_id)
+		_pending_equip_id = ""
+
+
+func _on_equip_prompt_canceled() -> void:
+	_pending_equip_id = ""
+
+
+func _on_equip_prompt_visibility_changed() -> void:
+	# AcceptDialog can hide() itself before or after emitting confirmed/
+	# canceled depending on path, so this only handles unpausing -- clearing
+	# _pending_equip_id is the job of the confirmed/canceled handlers above,
+	# since relying on visibility timing here caused a real race (the dialog
+	# hid and cleared the pending id before "confirmed" ran, silently
+	# dropping the equip).
+	if equip_prompt.visible:
+		return  # this fired because the dialog just opened, not closed
+	get_tree().paused = false
 
 
 func equip_item(item_id: String) -> void:

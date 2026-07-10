@@ -130,7 +130,8 @@ wander_radius = 20.0
 drop_chance = 1.0
 is_guardian = true
 gate_boss_id = "gate1_boss"
-bonus_max_health = 100
+bonus_max_health = 2080
+bonus_attack_damage = 32
 bonus_drop_item_id = "healing_potion"
 bonus_drop_amount = 10
 

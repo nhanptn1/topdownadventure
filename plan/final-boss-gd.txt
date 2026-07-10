@@ -1,0 +1,100 @@
+# BossHealthManager.gd
+extends CharacterBody2D
+
+# ─── SIGNALS ───
+signal phase_changed(new_phase: int)
+signal boss_damaged(current_health: float, max_health: float)
+signal boss_died
+
+# ─── ENUMS & VARIABLES ───
+enum BossPhase { PHASE_1, PHASE_2, PHASE_3, DEAD }
+var current_phase: BossPhase = BossPhase.PHASE_1
+
+@export_category("Boss Statistics")
+@export var max_health: float = 2500.0
+@onready var current_health: float = max_health
+
+# Cache internal nodes for clean AI architecture translation
+@onready var animation_player: AnimationPlayer = $AnimationPlayer
+@onready var hitbox_component: Area2D = $HitboxComponent
+
+func _ready() -> void:
+	print("Final Boss Initialized: Phase 1 (100% Health)")
+	_enter_phase(BossPhase.PHASE_1)
+
+# ─── PUBLIC DAMAGE FUNCTION ───
+func take_damage(amount: float, element_type: String) -> void:
+	if current_phase == BossPhase.DEAD:
+		return
+		
+	current_health = clamp(current_health - amount, 0.0, max_health)
+	boss_damaged.emit(current_health, max_health)
+	
+	# Trigger your engine's Hit-Flash shader / damage feedback
+	_trigger_visual_damage_feedback(element_type)
+	
+	# Evaluate structural health thresholds
+	_check_health_thresholds()
+
+# ─── PRIVATE THRESHOLD & PHASE CONTROLLER ───
+func _check_health_thresholds() -> void:
+	var health_percentage: float = (current_health / max_health) * 100.0
+	
+	if current_health <= 0.0 and current_phase != BossPhase.DEAD:
+		_enter_phase(BossPhase.DEAD)
+	elif health_percentage <= 30.0 and current_phase == BossPhase.PHASE_2:
+		_enter_phase(BossPhase.PHASE_3)
+	elif health_percentage <= 60.0 and current_phase == BossPhase.PHASE_1:
+		_enter_phase(BossPhase.PHASE_2)
+
+func _enter_phase(new_phase: BossPhase) -> void:
+	current_phase = new_phase
+	phase_changed.emit(int(current_phase))
+	
+	match current_phase:
+		BossPhase.PHASE_1:
+			animation_player.play("hover_idle_phase1")
+			
+		BossPhase.PHASE_2:
+			print("CRITICAL: Boss entered Phase 2 (60% Health)! Attack patterns speed up.")
+			# Trigger mid-game invulnerability frame or screen shake during transition
+			_trigger_phase_transition_juice()
+			animation_player.play("hover_idle_phase2")
+			
+		BossPhase.PHASE_3:
+			print("APOCALYPSE: Boss entered Phase 3 (30% Health)! Enraged state unlocked.")
+			_trigger_phase_transition_juice()
+			animation_player.play("hover_idle_phase3")
+			
+		BossPhase.DEAD:
+			print("VICTORY: Boss has fallen.")
+			_execute_death_sequence()
+
+# ─── JUICE & GAME FEEL FUNCTIONS ───
+func _trigger_visual_damage_feedback(element: String) -> void:
+	# Add custom behavioral logic depending on the arrow element striking the boss
+	match element:
+		"fire":
+			modulate = Color(1.5, 0.6, 0.6) # Slight red tint
+		"ice":
+			modulate = Color(0.6, 0.6, 1.5) # Slight blue freeze tint
+		"lightning":
+			modulate = Color(1.5, 1.5, 0.6) # Slight electric yellow tint
+			
+	# Quick tween to return to normal sprite values to complete the "flash" effect
+	var tween = create_tween()
+	tween.tween_property(self, "modulate", Color.WHITE, 0.1)
+
+func _trigger_phase_transition_juice() -> void:
+	# Micro-freeze engine performance to emphasize dramatic impact phase shift
+	Engine.time_scale = 0.2
+	var tween = create_tween()
+	# Shake camera node or pulsate boss scale for game juice
+	tween.tween_property(self, "scale", Vector2(1.1, 1.1), 0.15)
+	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.15)
+	tween.finished.connect(func(): Engine.time_scale = 1.0)
+
+func _execute_death_sequence() -> void:
+	hitbox_component.process_mode = PROCESS_MODE_DISABLED # Disable combat collisions
+	boss_died.emit()
+	animation_player.play("apocalyptic_death")

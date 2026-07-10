@@ -90,6 +90,7 @@ animal_name = "Elite Dragon"
 min_level = 12
 max_level = 17
 body_tint = Color(1, 0.55, 0.45, 1)
+map_tier = 2
 
 [node name="SkeletonSpawner" type="Node2D" parent="."]
 script = ExtResource("2")
@@ -101,6 +102,7 @@ is_aggressive = true
 min_level = 12
 max_level = 17
 species = "skeleton"
+map_tier = 2
 
 [node name="Gate" parent="." instance=ExtResource("11")]
 position = Vector2(1830, 600)
@@ -121,7 +123,9 @@ wander_radius = 20.0
 drop_chance = 1.0
 is_guardian = true
 gate_boss_id = "gate2_boss"
-bonus_max_health = 160
+bonus_max_health = 4110
+bonus_attack_damage = 52
+map_tier = 2
 bonus_drop_item_id = "healing_potion"
 bonus_drop_amount = 10
 
