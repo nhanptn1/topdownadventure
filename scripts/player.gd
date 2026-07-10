@@ -16,6 +16,11 @@ const SHAKE_DECAY := 24.0
 const HIT_SHAKE_STRENGTH := 5.0
 const QUICK_SLOT_DISPLAY_INTERVAL := 0.1
 const ZOOM_LEVELS := [1.0, 1.3]
+# Raises the skill cast's visual effect to roughly head/upper-body height on
+# its target, matching the offset enemy.gd already uses for its own damage
+# numbers -- the AoE damage query itself still centers on the target's real
+# (unraised) position for correct hit detection.
+const SKILL_EFFECT_HEAD_OFFSET := Vector2(0, -30)
 
 const CHARACTER_DATA := {
 	"warrior": {"prefix": "warrior", "directional": true,
@@ -23,7 +28,11 @@ const CHARACTER_DATA := {
 			"idle_back": 2, "walk_back": 4, "attack_back": 3},
 		"anim_fps": {"idle_side": 4.0, "walk_side": 10.0, "attack_side": 14.0,
 			"idle_back": 4.0, "walk_back": 10.0, "attack_back": 14.0},
-		"scale_factor": 0.4, "projectile_scene": "res://scenes/projectile_knife.tscn"},
+		"scale_factor": 0.4, "projectile_scene": "res://scenes/projectile_knife.tscn",
+		# Short-ranged knife throw (see projectile_knife.tscn's max_range)
+		# needs a higher flat base defense to compensate for playing closer
+		# to enemies than the mage's longer-ranged bolt.
+		"base_defense": 5},
 	"mage": {"prefix": "mage", "directional": true,
 		# idle_side reuses 2 walk_side frames (no true idle-side pose on the
 		# source sheet - only front/back have a real standing-still pose);
@@ -36,7 +45,8 @@ const CHARACTER_DATA := {
 		"anim_fps": {"idle_side": 4.0, "walk_side": 10.0, "attack_side": 11.0,
 			"idle_back": 4.0, "walk_back": 10.0, "attack_back": 11.0,
 			"idle_front": 4.0, "walk_front": 10.0, "attack_front": 11.0},
-		"scale_factor": 0.2, "projectile_scene": "res://scenes/projectile_bolt.tscn"},
+		"scale_factor": 0.2, "projectile_scene": "res://scenes/projectile_bolt.tscn",
+		"base_defense": 1},
 }
 
 @onready var sprite: AnimatedSprite2D = $Sprite
@@ -62,6 +72,11 @@ const CHARACTER_DATA := {
 @onready var quick_slot_heal_label: Label = $HUD/Margin/VBox/QuickSlotBar/Heal/Label
 @onready var quick_slot_throwable_label: Label = $HUD/Margin/VBox/QuickSlotBar/Throwable/Label
 @onready var quick_slot_buff_label: Label = $HUD/Margin/VBox/QuickSlotBar/Buff/Label
+@onready var skill_icon_rect: TextureRect = $HUD/Margin/VBox/SkillBar/Skill/Icon
+@onready var skill_label: Label = $HUD/Margin/VBox/SkillBar/Skill/Label
+@onready var skill_use_button: Button = $HUD/Margin/VBox/SkillBar/Skill/UseButton
+@onready var passive_icon_rect: TextureRect = $HUD/Margin/VBox/SkillBar/Passive/Icon
+@onready var passive_label: Label = $HUD/Margin/VBox/SkillBar/Passive/Label
 
 var can_attack := true
 var is_attacking := false
@@ -87,8 +102,9 @@ var accessory_speed_bonus := 0.0
 var buff_speed_bonus := 0.0
 var _buff_speed_token := 0
 var quick_slot_cooldowns := {"heal": 0.0, "throwable": 0.0, "buff": 0.0}
+var skill_cooldown_remaining := 0.0
 
-const RARITY_RANK := {"common": 0, "rare": 1, "epic": 2}
+const RARITY_RANK := {"common": 0, "rare": 1, "epic": 2, "mythic": 3}
 # Consumable categories that auto-fill their quick slot on pickup instead of
 # requiring a trip to the bag (HP potion, speed tonic, bombs).
 const AUTO_QUICK_SLOT_CATEGORIES := ["heal", "buff", "throwable"]
@@ -119,6 +135,7 @@ func _ready() -> void:
 	_apply_camera_zoom()
 	auto_attack_button.pressed.connect(_on_auto_attack_button_pressed)
 	_update_auto_attack_button_text()
+	_setup_skill_ui()
 	ng_plus_label.visible = GlobalState.ng_plus_level > 0
 	if ng_plus_label.visible:
 		ng_plus_label.text = "NG+%d" % GlobalState.ng_plus_level
@@ -181,10 +198,19 @@ func _physics_process(delta: float) -> void:
 
 	for category in quick_slot_cooldowns:
 		quick_slot_cooldowns[category] = maxf(quick_slot_cooldowns[category] - delta, 0.0)
+	skill_cooldown_remaining = maxf(skill_cooldown_remaining - delta, 0.0)
+	# Auto-attack mode also auto-casts the active skill whenever it's off
+	# cooldown -- _try_skill() already no-ops gracefully while mid-swing,
+	# dead, on cooldown, or still locked, so it's safe to just try it every
+	# frame the toggle is on rather than threading it through the attack
+	# animation's own chained re-fire callbacks.
+	if GlobalState.auto_attack_enabled and skill_cooldown_remaining <= 0.0 and not is_attacking:
+		_try_skill()
 	_quick_slot_display_timer += delta
 	if _quick_slot_display_timer >= QUICK_SLOT_DISPLAY_INTERVAL:
 		_quick_slot_display_timer = 0.0
 		_update_quick_slot_cooldown_display()
+		_update_skill_cooldown_display()
 
 	var input_vector := Vector2.ZERO
 	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
@@ -257,6 +283,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_step_zoom(-1)
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F:
 		_try_attack()
+	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_R:
+		_try_skill()
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_I:
 		_open_inventory()
 	elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_B:
@@ -294,6 +322,24 @@ func _on_zoom_button_pressed() -> void:
 
 func _update_auto_attack_button_text() -> void:
 	auto_attack_button.text = "Auto-Attack: ON" if GlobalState.auto_attack_enabled else "Auto-Attack: OFF"
+
+
+func _setup_skill_ui() -> void:
+	# Icon/description are the same across skill tiers (no separate art per
+	# tier) so they're set once here; the tier-dependent name/numbers and the
+	# locked/unlocked state are refreshed live in _update_skill_cooldown_display().
+	var skill_tiers: Array = SkillDatabase.SKILLS.get(GlobalState.selected_character, {}).get("skill_tiers", [])
+	if not skill_tiers.is_empty():
+		var base_skill: Dictionary = skill_tiers[0]
+		var skill_icon: String = base_skill.get("icon", "")
+		if skill_icon != "":
+			skill_icon_rect.texture = load(skill_icon)
+	var passive := SkillDatabase.get_passive_info(GlobalState.selected_character)
+	var passive_icon: String = passive.get("icon", "")
+	if passive_icon != "":
+		passive_icon_rect.texture = load(passive_icon)
+	passive_icon_rect.tooltip_text = passive.get("description", "")
+	_update_skill_cooldown_display()
 
 
 func _on_auto_attack_button_pressed() -> void:
@@ -396,6 +442,124 @@ func _on_attack_cooldown_timeout() -> void:
 		_try_attack()
 
 
+func _on_skill_button_pressed() -> void:
+	_try_skill()
+
+
+func _try_skill() -> void:
+	if is_dead or is_attacking:
+		return
+	if skill_cooldown_remaining > 0.0:
+		return
+	var skill := SkillDatabase.get_skill(GlobalState.selected_character, level)
+	if skill.is_empty():
+		return
+
+	is_attacking = true
+	skill_cooldown_remaining = float(skill.get("cooldown", 8.0))
+
+	var dmg := roundi(total_attack_damage() * float(skill.get("damage_multiplier", 2.0)))
+	var crit := randf() < crit_chance
+	if crit:
+		dmg *= 2
+
+	var target_pos := _skill_target_position(skill)
+	var radius := float(skill.get("radius", 60.0))
+	_deal_aoe_damage(target_pos, dmg, radius, crit)
+	_spawn_skill_effect(skill, target_pos + SKILL_EFFECT_HEAD_OFFSET, radius)
+	add_camera_shake(HIT_SHAKE_STRENGTH * 1.5)
+	AudioManager.play("attack")
+
+	var anim_name := _resolve_anim("attack")
+	sprite.speed_scale = 1.0
+	sprite.play(anim_name)
+
+
+# The character sprite sheets have no dedicated skill-cast animation (mage
+# doesn't even have full directional attack poses -- see CHARACTER_DATA's
+# comment), so the skill's own icon art (already extracted from
+# skill-design.png) is used as a pop-in/fade world-space effect at the cast
+# location instead of trying to build a whole new animation set.
+func _spawn_skill_effect(skill: Dictionary, pos: Vector2, radius: float) -> void:
+	var icon_path: String = skill.get("icon", "")
+	if icon_path == "":
+		return
+	var tex: Texture2D = load(icon_path)
+	if tex == null:
+		return
+	var effect := preload("res://scenes/skill_effect.tscn").instantiate()
+	get_tree().current_scene.add_child(effect)
+	effect.global_position = pos
+	effect.setup(tex, radius * 1.8)
+
+
+# Both skills target the nearest enemy in range so the damage and the
+# visual effect actually land on the foe being hit, not just somewhere near
+# the player -- falls back to a point in front of the player only when
+# nothing's in range (e.g. swinging at empty air), so the skill still has
+# somewhere sensible to land. Flame Slash searches at roughly its melee
+# knife range; Meteor searches much further out, matching its ranged-spell
+# identity.
+func _skill_target_position(skill: Dictionary) -> Vector2:
+	var is_meteor: bool = skill.get("id", "") == "meteor"
+	var search_range := 400.0 if is_meteor else 150.0
+	var nearest: Node2D = null
+	var nearest_dist := search_range
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(enemy):
+			continue
+		var d := global_position.distance_to(enemy.global_position)
+		if d < nearest_dist:
+			nearest_dist = d
+			nearest = enemy
+	if nearest:
+		return nearest.global_position
+	var fallback_dist := 200.0 if is_meteor else 40.0
+	return global_position + facing_direction * fallback_dist
+
+
+# Same enemy-hurtbox shape-query approach as thrown_bomb.gd's
+# _deal_area_damage() -- proven AoE pattern, reused rather than reinvented.
+func _deal_aoe_damage(pos: Vector2, damage: int, radius: float, is_crit: bool) -> void:
+	var space_state := get_world_2d().direct_space_state
+	var shape := CircleShape2D.new()
+	shape.radius = radius
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = shape
+	query.transform = Transform2D(0, pos)
+	query.collision_mask = 8  # enemy hurtbox layer
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	var results := space_state.intersect_shape(query, 32)
+	for result in results:
+		var hurtbox: Area2D = result["collider"]
+		var target := hurtbox.get_parent()
+		if target and target.has_method("take_damage"):
+			target.take_damage(damage, is_crit)
+			if randf() < stun_chance and target.has_method("apply_stun"):
+				target.apply_stun(1.0)
+
+
+func _update_skill_cooldown_display() -> void:
+	var skill := SkillDatabase.get_skill(GlobalState.selected_character, level)
+	var label: String
+	if skill.is_empty():
+		label = "Skill: Locked (Lv. %d)" % SkillDatabase.SKILL_UNLOCK_LEVEL
+	else:
+		label = "Skill: %s" % skill.get("name", "?")
+		if skill_cooldown_remaining > 0.0:
+			label += " (%.1fs)" % skill_cooldown_remaining
+	skill_label.text = label
+	skill_use_button.disabled = skill.is_empty()
+
+	var passive := SkillDatabase.get_passive_info(GlobalState.selected_character)
+	var passive_stats := SkillDatabase.get_passive_stats(GlobalState.selected_character, level)
+	var stat_key: String = passive.get("stat", "")
+	var stat_value: float = passive_stats.get(stat_key, 0.0)
+	passive_label.text = "Passive: %s (+%d %s)" % [passive.get("name", "?"), roundi(stat_value), stat_key]
+	passive_label.tooltip_text = passive.get("description", "")
+
+
 func total_attack_damage() -> int:
 	return BASE_ATTACK_DAMAGE + (level - 1) + weapon_atk_bonus
 
@@ -435,6 +599,7 @@ func gain_xp(amount: int, source_level: int = -1) -> void:
 			return
 	xp += amount
 	var leveled_up := false
+	var old_passive_hp_bonus := _total_hp_bonus()
 	while level < MAX_LEVEL and xp >= xp_to_next_level():
 		xp -= xp_to_next_level()
 		level += 1
@@ -444,6 +609,12 @@ func gain_xp(amount: int, source_level: int = -1) -> void:
 		print("Level up! Now level ", level, " (damage: ", level, ")")
 	if leveled_up:
 		AudioManager.play("level_up")
+		# Skill unlock/upgrade and passive stat scaling (see skill_database.gd)
+		# both key off level, so gear-equip-time recalculation alone would go
+		# stale between now and the next equip/unequip action.
+		max_health += _total_hp_bonus() - old_passive_hp_bonus
+		health = clampi(health, 0, max_health)
+		_recalculate_equipment_stats()
 	_update_hud()
 
 
@@ -757,12 +928,14 @@ func _total_hp_bonus() -> int:
 		var item_id: String = GlobalState.equipped[slot]
 		if item_id != "":
 			total += int(GlobalState.get_rolled_stat(item_id, "hp"))
+	var passive_stats := SkillDatabase.get_passive_stats(GlobalState.selected_character, level)
+	total += int(passive_stats.get("hp", 0))
 	return total
 
 
 func _recalculate_equipment_stats() -> void:
 	var atk := 0
-	var def := 0
+	var def: int = int(character_data.get("base_defense", 0))
 	var crit := 0.0
 	var stun := 0.0
 	var atk_speed := 0.0
@@ -777,6 +950,15 @@ func _recalculate_equipment_stats() -> void:
 		stun += GlobalState.get_rolled_stat(item_id, "stun_chance")
 		atk_speed += GlobalState.get_rolled_stat(item_id, "attack_speed")
 		spd += GlobalState.get_rolled_stat(item_id, "speed")
+	# Passive skill (see skill_database.gd) is always active, on top of gear,
+	# and scales with character level (passive_level_for()).
+	var passive_stats := SkillDatabase.get_passive_stats(GlobalState.selected_character, level)
+	atk += int(passive_stats.get("atk", 0))
+	def += int(passive_stats.get("def", 0))
+	crit += passive_stats.get("crit_chance", 0.0)
+	stun += passive_stats.get("stun_chance", 0.0)
+	atk_speed += passive_stats.get("attack_speed", 0.0)
+	spd += passive_stats.get("speed", 0.0)
 	weapon_atk_bonus = atk
 	defense = def
 	crit_chance = crit

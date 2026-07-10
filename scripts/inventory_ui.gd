@@ -141,10 +141,9 @@ func _build_gear_row(item_id: String) -> HBoxContainer:
 	var item := ItemDatabase.get_item(item_id)
 	var count: int = GlobalState.storage.get(item_id, 0)
 	var label := Label.new()
-	label.custom_minimum_size = Vector2(200, 0)
+	label.custom_minimum_size = Vector2(220, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	label.clip_text = true
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var name_text: String = item.get("name", "?")
 	if count > 1:
 		name_text = "%s x%d" % [name_text, count]

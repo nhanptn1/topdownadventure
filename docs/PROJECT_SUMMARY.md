@@ -1,6 +1,289 @@
 # TopDownAdventure — Project Summary, Skills, and Next Checklist
 
-*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session, then again after adding a New Game+ postgame loop, then again after adding NG+-exclusive mythic gear, then again after the entire weapon/armor/accessory roster was replaced with new art and items, then again after gear drops got randomized per-drop stat rolls. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session, then again after adding a New Game+ postgame loop, then again after adding NG+-exclusive mythic gear, then again after the entire weapon/armor/accessory roster was replaced with new art and items, then again after gear drops got randomized per-drop stat rolls, then again after adding a character skill system (active skill + passive per character), then again after the skill system got level-gating, a passive leveling curve, base defense, and auto-cast, then again after the active skill got its own visual effect, then again after a full player/enemy/boss balance review, then again after fixing overlapping/clipped stat text in the inventory UI, then again after fixing the skill effect landing near the player instead of the enemy. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+
+## 0j. Session (2026-07-10): skill effect/damage now lands on the enemy, not the player
+
+The user reported the active skill's visual effect (see §0g) appearing at/near the
+player's own position instead of on the enemy being hit. Root cause:
+`_skill_target_position()` only had Meteor search for the nearest enemy -- Flame
+Slash unconditionally returned a fixed point 40px in front of the *player*,
+regardless of where any enemy actually was, so both its damage and its visual
+effect were always anchored to the player rather than the target.
+
+- **Both skills now search for the nearest enemy** in `_skill_target_position()`
+  (Flame Slash at ~150px, roughly its melee knife range; Meteor still at 400px,
+  matching its ranged-spell identity) and only fall back to a point in front of the
+  player when nothing is in range at all (e.g. swinging at empty air) -- unified
+  into one function instead of Meteor being the only branch that did real targeting.
+- **The visual effect is also raised to roughly head/upper-body height** on its
+  target via a new `SKILL_EFFECT_HEAD_OFFSET := Vector2(0, -30)`, matching the exact
+  offset `enemy.gd` already uses for its own floating damage numbers. This only
+  affects where the *visual* spawns -- the AoE damage query itself still centers on
+  the target's real, unraised position for correct hit detection.
+- A real `:=` type-inference parse error hit *actual game code* this time (not a
+  disposable test script, for once) on `var is_meteor := skill.get("id", "") == "meteor"`
+  -- comparing a `Dictionary.get()` Variant result against a string literal doesn't
+  resolve to a concrete type for inference purposes either, same family of gotcha as
+  `.instantiate()`. Fixed with an explicit `var is_meteor: bool = ...` annotation.
+- Verified headlessly (disposable test, deleted after passing): with an enemy placed
+  60px from the player, Warrior's Flame Slash targets it exactly (not the player);
+  casting it spawns the visual effect within 30px of the enemy's position (the head
+  offset) and confirms that distance is smaller than the effect's distance to the
+  player; and with two enemies at different distances, Meteor's targeting correctly
+  picks the nearer one.
+
+## 0i. Session (2026-07-10): fix clipped/overlapping item stat text in the inventory list
+
+## 0i. Session (2026-07-10): fix clipped/overlapping item stat text in the inventory list
+
+The user reported the inventory panel's item rows showing cut-off stat text (e.g.
+"Frostwind Bow x2 (ATK +5, Atk S" -- truncated mid-word), reported as overlapping
+with the Equip/Discard buttons. Root cause: `inventory_ui.gd`'s `_build_gear_row()`
+used `label.clip_text = true` with a fixed `custom_minimum_size = Vector2(200, 0)`
+and no wrapping -- fine when items had 1-2 short stats, but this session's item
+redesign (§0c/§0d) gave gear up to 4 stat lines per rarity tier, especially mythic,
+producing much longer strings than the layout was ever sized for. The *equipped*-slot
+rows (`_build_equip_row()`) never had this problem because they already used
+`autowrap_mode = TextServer.AUTOWRAP_WORD_SMART` instead of clipping -- the inventory
+list rows just hadn't been brought in line with that pattern.
+
+- `_build_gear_row()`: swapped `clip_text = true` for the same
+  `autowrap_mode = TextServer.AUTOWRAP_WORD_SMART` the equip rows already use, and
+  dropped `size_flags_vertical = SIZE_SHRINK_CENTER` so a wrapped multi-line label can
+  actually grow the row's height instead of being squashed into one line's worth of
+  space. (`_build_consumable_row()`/`_build_material_row()` left as-is -- their text
+  is just "Name xN", never long enough to clip.)
+- `scenes/inventory_ui.tscn`: widened `PanelBG` from 800x600 to 920x640 (viewport is
+  1280x720, confirmed this still fits comfortably centered) so wrapped mythic-tier
+  stat lines don't wrap into an excessive number of short lines.
+- Verified headlessly (disposable test, deleted after passing): built a gear row for
+  a 4-stat mythic item and confirmed `clip_text` is now `false`,
+  `autowrap_mode != AUTOWRAP_OFF`, and the full stat string (including the 4th stat)
+  is present in `label.text` rather than being cut off.
+- **Not yet visually re-confirmed in-editor** -- headless can prove the label's
+  wrap/clip properties changed and the full text string is present, but not how the
+  actual wrapped multi-line layout looks/scrolls in the real 920x640 panel. Worth a
+  quick look next session, especially with a full inventory of mixed 1-4-stat items
+  to check the `RightScroll` `ScrollContainer` still scrolls smoothly with taller rows.
+
+## 0h. Session (2026-07-10): full balance review across player/enemy/boss stats
+
+## 0h. Session (2026-07-10): full balance review across player/enemy/boss stats
+
+A lot of interacting systems landed this session (NG+ scaling, the item roster
+replacement, randomized rolls, the skill system, the Warrior range/defense change)
+without a final holistic pass checking they still add up together. Gathered every
+map's actual enemy `min_level`/`max_level`/guardian bonus-stat overrides, the gate
+level requirements, and the XP curve as ground truth (not memory) and worked through
+the numbers.
+
+**What was checked and left alone (holds up fine):**
+- Combined gear-DPS + skill-DPS at level ~35 in the best gear obtainable on a first
+  playthrough (epic -- mythic can't drop before NG+) lands close to the ~180 DPS /
+  ~60s-clear target `ultimate_boss.gd`'s HP was originally calibrated against, even
+  though average-roll gear DPS alone (~154) sits under that target -- the active
+  skill's own DPS contribution (~25-27 DPS at max level with auto-cast) closes the
+  gap almost exactly. This wasn't planned to land there; it's a coincidence worth
+  knowing about in case either side gets retuned independently later.
+- `attack_speed_bonus`'s 0.9 clamp (`ATTACK_COOLDOWN_BASE * (1.0 - attack_speed_bonus)`)
+  is a safe ceiling that's never actually reachable -- max realistic mythic-tier
+  attack_speed sum is ~0.43, nowhere near the clamp.
+- Gate boss hit-count-to-kill-player is consistent across all three gates (~3.2-3.7
+  hits at their respective level thresholds), and mythic gear's *relative* power
+  edge over epic shrinks a lot at high level (level itself dominates
+  `total_attack_damage()`'s formula by then) -- both are naturally self-balancing,
+  not something that needed a deliberate fix.
+- Warrior's passive (`def`, unbounded growth with level) doesn't quietly trivialize
+  damage taken even at very high levels/NG+ cycles, because NG+'s own damage
+  multiplier grows unboundedly too and roughly keeps pace.
+- The Warrior/Mage asymmetry the user specified directly (Warrior: more base
+  defense + defensive passive + shorter range; Mage: less defense + speed passive +
+  longer range) reads as a coherent tanky-bruiser vs. fragile-kiter pair, not an
+  accidental imbalance -- left as specified.
+
+**What was changed:** `ultimate_boss.gd`'s `PHASE_ATTACK_DAMAGE` was still `[45, 65, 90]`
+from before this session's Warrior base_defense/passive-def additions pushed player
+defense up. Once checked against the actual gate-boss pattern (Dragon Sovereign, the
+guardian immediately before this fight, hits for a flat 132 -- *harder* than even this
+boss's old Phase 3 of 90), the true final boss had drifted into hitting *softer* than
+the boss guarding its own front door, undermining the intended climax. Re-tuned to
+`[65, 100, 140]`, checked against the same ~3-4-hits-to-die pattern the three gate
+bosses already establish: now ~10.6 hits in Phase 1 (room to learn the fight) down to
+~3.4 hits in Phase 3 (matching/slightly exceeding Dragon Sovereign, restoring the
+escalation). `RANGED_DAMAGE_FACTOR` (0.6, unchanged) scales proportionally with these,
+so the ranged bolt attack's relative strength is untouched. Verified headlessly
+(disposable test, deleted after passing): new base values load correctly, and NG+1's
+`difficulty_multiplier()` scaling still applies correctly on top (`[98, 150, 210]`).
+
+**Not changed, flagged as a judgment call the user can override**: whether the true
+final boss *should* out-damage the gate boss right before it is a pacing opinion, not
+an objective bug -- a "long endurance fight vs. a hard-hitting gatekeeper" split is
+also a valid design. Went with escalating damage since that's the more common
+expectation for a final boss, but worth a real playtest to confirm it feels right
+rather than just "harder."
+
+## 0g. Session (2026-07-10): visual effect for the active skill cast
+
+## 0g. Session (2026-07-10): visual effect for the active skill cast
+
+The active skill (§0e/§0f) was reusing the plain "attack" animation pose with no
+visual tied to what it actually does -- the user asked for something that visually
+matches the skill-design.png reference art instead.
+
+- Building a real new animation set was ruled out as disproportionate: `CHARACTER_DATA`
+  has no skill-cast animation slot at all, and Mage doesn't even have full
+  directional *attack* poses today (see its `frame_counts` comment) -- a from-scratch
+  skill animation would be a much bigger art project than what was asked.
+- Instead, **the skill's own icon art (already extracted from skill-design.png) is
+  spawned as a world-space pop-in/fade effect at the cast location** -- new
+  `scripts/skill_effect.gd` + `scenes/skill_effect.tscn`, following the exact
+  self-contained tween-then-`queue_free()` pattern `damage_number.gd` already
+  established in this project (pop in with `TRANS_BACK`/`EASE_OUT` overshoot, hold
+  briefly, fade out, free itself -- ~0.55s total). The icon's on-screen size is
+  rescaled from its HUD-icon-sized source texture to roughly match the skill's real
+  damage radius (`radius * 1.8` px), so a bigger AoE actually looks bigger.
+  `player.gd`'s `_try_skill()` calls this right after `_deal_aoe_damage()`, at the
+  same `target_pos` the damage query already used.
+- Verified headlessly (disposable test, deleted after passing): casting the skill
+  spawns a `skill_effect` node with a valid texture at the expected position, and it
+  cleans itself up (no longer present in the tree) after its tween finishes.
+- **Not yet manually eyeballed** -- confirm in-editor that the pop/fade reads well at
+  actual gameplay zoom and doesn't look out of place next to the pixel-art character
+  sprites (it's a static icon popping in, not an animated sprite).
+
+## 0f. Session (2026-07-10): skill system leveling, base defense, auto-cast
+
+## 0f. Session (2026-07-10): skill system leveling, base defense, auto-cast
+
+Follow-up refinement to §0e's skill system, same session:
+
+- **Active skill is now level-gated**, not available from level 1: locked below
+  level 10 (`SkillDatabase.SKILL_UNLOCK_LEVEL`), unlocks at its base tier at 10,
+  upgrades to a stronger tier at level 20 (`SKILL_LEVEL_2_AT`) -- bigger damage
+  multiplier, shorter cooldown, larger radius, same icon/id (no new art per tier).
+  `SkillDatabase.SKILLS[character]["skill_tiers"]` is now a 2-element array indexed
+  by `skill_level_for(character_level) - 1`; `get_skill()` returns an empty dict
+  while locked, which `_try_skill()` already treated as "no skill" so no new guard
+  logic was needed there.
+- **Passive is redesigned as a per-level scaling stat**, not a flat bonus: Warrior's
+  Guardian's Resolve is `def`, Mage's Arcane Insight is `speed`, both starting at 1
+  point from level 1 and gaining +1 point every 2 character levels
+  (`SkillDatabase.passive_level_for()` = `1 + level/2` integer division). This
+  replaced §0e's flat `+4 def`/`+10% crit_chance` design.
+- **New flat per-character `base_defense`** in `player.gd`'s `CHARACTER_DATA` (5 for
+  Warrior, 1 for Mage) -- folded into `_recalculate_equipment_stats()`'s `def`
+  accumulator alongside gear and the passive. Warrior needed more baseline
+  survivability now that its normal-attack range is halved (see §0e) and its
+  passive is defense-flavored rather than the old flat bonus.
+- **Passive/skill state now also refreshes on level-up**, not just on
+  equip/unequip: `gain_xp()` re-runs `_recalculate_equipment_stats()` (and applies
+  the resulting HP-bonus delta the same way `equip_item()`/`unequip_slot()` already
+  did) whenever the level-up loop actually fires, so hitting level 10/20/every-even-
+  level takes effect immediately instead of waiting for the next gear change.
+- **Auto-attack mode now also auto-casts the active skill**: `_physics_process()`
+  calls `_try_skill()` every frame once `GlobalState.auto_attack_enabled` is on and
+  `skill_cooldown_remaining <= 0.0` and not `is_attacking` -- `_try_skill()` already
+  no-ops gracefully while dead/mid-swing/on-cooldown/locked, so no new state
+  tracking was needed, just an opportunistic call site next to the existing
+  cooldown-ticking code.
+- **HUD updated to reflect locked/leveled state live**: the Skill row shows
+  "Skill: Locked (Lv. 10)" (and disables its Use button) below the unlock level,
+  the current tier's name/cooldown countdown once unlocked; the Passive row now
+  shows the live point value, e.g. "Passive: Guardian's Resolve (+6 def)" --
+  recomputed on the same throttled timer as the quick-slot cooldown display, since
+  the value now changes over time as the character levels.
+- Verified headlessly (disposable test, deleted after passing): unlock/upgrade
+  thresholds at exactly levels 10/20; skill stays locked and doesn't fire below 10;
+  `passive_level_for()` matches the 1/2/2/3/3/6 sequence for levels 1-5,10; a fresh
+  level-1 Warrior's defense is exactly `base_defense(5) + passive(1) = 6`; after
+  reaching level 10 the same character's defense becomes `5 + 6 = 11` and its skill
+  successfully fires; a Mage's `gain_xp()` call that levels it all the way to 100
+  correctly refreshes `accessory_speed_bonus` to match `passive_level_for(100)` with
+  no manual equip/unequip needed in between; and a single simulated
+  `_physics_process()` tick with auto-attack on and the skill off cooldown
+  auto-fired it. Two more `:=`-on-dynamic-access hangs hit again while writing
+  *this* test (not the game code) -- same gotcha as §0e, same fix (plain `=`).
+
+## 0e. Session (2026-07-10): character skill system (active skill + passive)
+
+## 0e. Session (2026-07-10): character skill system (active skill + passive)
+
+The user supplied a second reference sheet (`D:\WORK\PROJECT\GODOT\image\skill-design.png`,
+1024x1024, a 3-col x 2-row grid: Normal Attack / Skill / Passive columns x Warrior/Mage
+rows) and asked for a real skill system: each character keeps its existing normal
+attack, plus a new active skill (own cooldown) and a new always-on passive.
+
+- **Existing combat architecture researched first** (`player.gd`): both Warrior and
+  Mage's "normal attack" already work identically under the hood -- `_try_attack()`
+  spawns a projectile scene (`projectile_knife.tscn` vs `projectile_bolt.tscn`), there
+  is no melee-vs-ranged branch in code, just different projectile scenes/ranges. There
+  was no skill/passive concept anywhere and `CHARACTER_DATA` has no spare animation
+  slot for one, so the new skill **reuses the existing "attack" animation pose**
+  rather than requiring a whole new character sprite-sheet extraction project --
+  the new reference sheet's icons are for a UI hotbar, not new character frames.
+- **New `scripts/skill_database.gd`** (mirrors `item_database.gd`'s static-class
+  pattern): `SKILLS` dict keyed by character id (`"warrior"`/`"mage"`), each with a
+  `skill` (name, icon, description, cooldown, damage_multiplier, radius) and a
+  `passive` (name, icon, description, flat `stats` bonus dict using the same stat
+  keys gear already uses -- `def`/`crit_chance`/etc.).
+  - Warrior: **Flame Slash** (2.5x attack damage, 55px radius in front of the
+    player, 8s cooldown) / **Guardian's Resolve** (+4 def, always on).
+  - Mage: **Meteor** (3x attack damage, 80px radius, targets the nearest enemy in
+    400px range or a point ahead if none, 10s cooldown) / **Arcane Insight** (+10%
+    crit chance, always on).
+- **`player.gd` additions**: `_try_skill()` (own `skill_cooldown_remaining` float,
+  ticked in `_physics_process` alongside the existing quick-slot cooldowns; gated by
+  `is_attacking` the same as normal attacks so a skill cast still gets cut short by a
+  movement-direction change via the existing `_cancel_attack()` path -- no new state
+  machine needed). `_deal_aoe_damage()` reuses `thrown_bomb.gd`'s proven
+  `PhysicsShapeQueryParameters2D` circle-query-against-the-enemy-hurtbox-layer
+  pattern rather than inventing a new one. New `KEY_R` binding (following the
+  existing raw-physical-keycode pattern already used for attack/quick-slots) plus a
+  HUD button, both routed through the same `_try_skill()`.
+  Passive stats fold into `_recalculate_equipment_stats()`/`_total_hp_bonus()`
+  alongside gear bonuses -- always active regardless of what's equipped.
+- **Balance ask, same session**: reduce the Warrior's normal-attack range by half so
+  the new skill doesn't stack on top of an already mage-equivalent ranged normal
+  attack. `projectile.gd`'s `MAX_RANGE` was a shared script-level `const` (300 for
+  *both* the knife and the bolt, since they're the same script) -- changed to an
+  `@export var max_range`, with `projectile_knife.tscn` overriding it to 150 and
+  `projectile_bolt.tscn` left at the 300 default.
+- **HUD**: new `SkillBar` section (icon + name + live cooldown countdown for Skill,
+  icon + name for Passive, no cooldown) added below the existing `QuickSlotBar`,
+  following its exact text-row layout/style. Icons are set once in `_ready()` based
+  on `GlobalState.selected_character` (never changes mid-session).
+- **Bug found and fixed opportunistically**: `RARITY_RANK` (used to decide whether a
+  newly-picked-up item is an "upgrade" worth auto-prompting equip for) only had
+  `common`/`rare`/`epic` -- missing `mythic` entirely (added when mythic gear shipped
+  in §0b but this table was never updated), so a mythic drop's rank fell back to `0`,
+  same as common, and would never trigger the upgrade prompt over an equipped
+  rare/epic item. Added `"mythic": 3`.
+- **Extraction pipeline reused, but the checker colors were different**: this sheet's
+  checkerboard is a darker two-tone pattern (~85/~135 gray) than the item sheet's
+  (~163/~205) -- had to re-histogram and update the reference values before reusing
+  the same dual-reference-match + bounded-dilation pipeline from §0c. One icon
+  (`skill_icon_flame_slash.png`) needed a manual follow-up crop: the largest-connected-
+  component pass kept a thin, disconnected-looking black rectangle (almost certainly a
+  cell-divider-line remnant bridged into the main blob via a stray pixel path) below
+  the actual sword art -- fixed by hard-cropping to the real content's row-opacity
+  profile rather than trusting the component result for that one frame. The two
+  "Normal Attack" icons (dagger, purple bolt) were extracted but are unused for now --
+  there's no existing HUD slot for the normal attack, only Skill/Passive got new UI.
+- Verified headlessly (disposable test, deleted after passing -- and after killing two
+  zombie Godot processes caused by the now-familiar `:=` type-inference silent-hang
+  gotcha hitting `var x := y.instantiate()` and `var x := dynamically_typed_var.field`
+  patterns *inside the test script itself*, not the game code): both characters'
+  skill/passive data load correctly; knife `max_range` is 150, bolt's is still 300;
+  `RARITY_RANK` ranks mythic above epic; Warrior's passive `+4 def` applies with zero
+  gear equipped; casting Flame Slash on a nearby enemy actually reduced its HP by the
+  expected `roundi(3 * 2.5) = 8` damage; and calling `_try_skill()` again immediately
+  after did not reset or re-trigger the cooldown.
+- **Not yet manually playtested in-editor** -- headless tests proved the data and
+  damage math, not how the `R` key/HUD button feel to actually use, whether Flame
+  Slash's 55px radius reads right visually with no dedicated VFX (it reuses the
+  normal attack animation pose), or whether Meteor's nearest-enemy targeting picks
+  sensible targets in a real fight.
 
 ## 0d. Session (2026-07-10): randomized per-drop stat rolls for gear
 
@@ -297,5 +580,9 @@ What's specific to *this* project and worth remembering on top of that:
 3b. **Manual playtest mythic gear** (see §0b) — confirm the gold mythic border renders correctly in the inventory UI and that equipping an ascended item actually feels like a noticeable power jump. `ItemDatabase.MYTHIC_DROP_CHANCE` (0.5) is the knob if it feels too rare/too common.
 3c. **Eyeball the new icon art in the actual inventory UI** (see §0c) — the whole 12-item weapon/armor/accessory roster only got a headless "does it load" check, not a real visual pass. Check the legendary bow icon (`icon_sovereigns_bow.png`) in particular for the faint edge fringe noted in §0c.
 3d. **Manual playtest the stat-roll system** (see §0d) — headless tests proved the roll math and the "keep the better roll" logic, but not how it actually feels to pick up a few of the same item and watch the numbers change in the inventory UI. `ItemDatabase.STAT_ROLL_MIN_RATIO` (0.6) is the one knob to retune if drops feel too random or not random enough.
+3e. **Manual playtest the skill system, its leveling curve, and the Warrior range/defense rebalance** (see §0e and §0f) — press `R` (and the HUD button) below and above level 10/20 to feel the lock/unlock/upgrade transitions and confirm the HUD text reads clearly; watch the Passive row's point value climb across a few level-ups; confirm auto-attack mode's auto-cast doesn't feel spammy or awkwardly timed; and confirm the Warrior's shorter knife range (`max_range = 150`) reads as intentionally melee-ish now that it also has more base defense (`base_defense: 5` in `CHARACTER_DATA`), rather than just feeling nerfed. `skill_database.gd`'s tier `cooldown`/`damage_multiplier`/`SKILL_UNLOCK_LEVEL`/`SKILL_LEVEL_2_AT` and `player.gd`'s `base_defense` values are the knobs to retune.
+3f. **Eyeball the skill cast visual effect** (see §0g) — confirm the icon pop/fade at the cast location reads well at real gameplay zoom for both Flame Slash and Meteor, and doesn't feel visually disconnected from the pixel-art character sprite. `skill_effect.gd`'s `POP_DURATION`/`HOLD_DURATION`/`FADE_DURATION` and the `radius * 1.8` size formula in `player.gd`'s `_spawn_skill_effect()` are the knobs to retune.
+3g. **Playtest the true final boss's damage rebalance** (see §0h) — the math checks out on paper (~3.4 hits to die in Phase 3 vs. the gate bosses' established ~3.2-3.7 pattern), but confirm it actually feels like an appropriately climactic final fight rather than just "harder than before" for its own sake. `ultimate_boss.gd`'s `PHASE_ATTACK_DAMAGE` (`[65, 100, 140]`) is the knob if it needs softening or a further push.
+3h. **Eyeball the inventory panel with a full, mixed inventory** (see §0i) — open the bag with several 1-4-stat items at once, confirm the wrapped multi-line rows and the wider 920x640 panel look right and the list still scrolls cleanly.
 4. **No feature-parity backport expected** with Endless Archer RPG — the two projects have deliberately diverged (const-Dict vs per-Resource data, different combat pacing). If a specific polish technique from that project (e.g. the `ShakeCamera`/`offset`-tween pattern, `WorldEnvironment` Glow, or projectile pooling if this game ever needs a bullet-heavy skill) seems worth having here too, treat it as a fresh, deliberate decision each time — not an assumed sync.
 5. **This doc itself** — update it directly the next time meaningful work lands here, rather than letting it drift stale; there's no separate memory-system record of this project's status, so this file is the authoritative one.

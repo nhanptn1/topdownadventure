@@ -1,7 +1,8 @@
 extends Area2D
 
-const MAX_RANGE := 300.0
 const STUN_DURATION := 1.0
+
+@export var max_range: float = 300.0
 
 var direction: Vector2 = Vector2.RIGHT
 var speed: float = 500.0
@@ -36,7 +37,7 @@ func _setup_trail() -> void:
 
 func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
-	if global_position.distance_to(_spawn_position) >= MAX_RANGE:
+	if global_position.distance_to(_spawn_position) >= max_range:
 		_on_lifetime_expired()
 
 

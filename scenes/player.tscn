@@ -165,6 +165,40 @@ custom_minimum_size = Vector2(44, 22)
 theme_override_font_sizes/font_size = 12
 text = "Use (3)"
 
+[node name="SkillBar" type="VBoxContainer" parent="HUD/Margin/VBox"]
+theme_override_constants/separation = 2
+
+[node name="Skill" type="HBoxContainer" parent="HUD/Margin/VBox/SkillBar"]
+theme_override_constants/separation = 6
+
+[node name="Icon" type="TextureRect" parent="HUD/Margin/VBox/SkillBar/Skill"]
+custom_minimum_size = Vector2(20, 20)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="HUD/Margin/VBox/SkillBar/Skill"]
+theme_override_colors/font_color = Color(1.0, 0.55, 0.25, 1)
+theme_override_font_sizes/font_size = 14
+text = "Skill: -"
+
+[node name="UseButton" type="Button" parent="HUD/Margin/VBox/SkillBar/Skill"]
+custom_minimum_size = Vector2(44, 22)
+theme_override_font_sizes/font_size = 12
+text = "Use (R)"
+
+[node name="Passive" type="HBoxContainer" parent="HUD/Margin/VBox/SkillBar"]
+theme_override_constants/separation = 6
+
+[node name="Icon" type="TextureRect" parent="HUD/Margin/VBox/SkillBar/Passive"]
+custom_minimum_size = Vector2(20, 20)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="HUD/Margin/VBox/SkillBar/Passive"]
+theme_override_colors/font_color = Color(1.0, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+text = "Passive: -"
+
 [node name="MinimapLayer" type="CanvasLayer" parent="."]
 
 [node name="Minimap" type="Control" parent="MinimapLayer"]
@@ -291,5 +325,6 @@ text = "Start New Game+"
 [connection signal="pressed" from="HUD/Margin/VBox/QuickSlotBar/Heal/UseButton" to="." method="_on_quick_slot_heal_pressed"]
 [connection signal="pressed" from="HUD/Margin/VBox/QuickSlotBar/Throwable/UseButton" to="." method="_on_quick_slot_throwable_pressed"]
 [connection signal="pressed" from="HUD/Margin/VBox/QuickSlotBar/Buff/UseButton" to="." method="_on_quick_slot_buff_pressed"]
+[connection signal="pressed" from="HUD/Margin/VBox/SkillBar/Skill/UseButton" to="." method="_on_skill_button_pressed"]
 [connection signal="pressed" from="VictoryScreen/Center/VBox/ContinueButton" to="." method="_on_continue_playing_pressed"]
 [connection signal="pressed" from="VictoryScreen/Center/VBox/NewGamePlusButton" to="." method="_on_new_game_plus_pressed"]

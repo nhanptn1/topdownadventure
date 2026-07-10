@@ -17,13 +17,21 @@ const CHASE_STOP_DISTANCE := 35.0
 
 const PHASE2_HP_RATIO := 0.6
 const PHASE3_HP_RATIO := 0.3
-# Calibrated so a level-35 player at the best gear obtainable by this point
-# (roughly cursed_runebow + void_ring -> ~180 DPS) needs ~60s to clear
-# 10840 HP (see docs/PROJECT_SUMMARY.md for the full derivation). Damage is
-# calibrated the other way: at ~387 effective HP (voidscale_armor's +15),
-# a Phase 1 hit reduced by 8 defense takes ~10 unhealed hits to kill the
-# player, escalating to ~5 hits by Phase 3.
-const PHASE_ATTACK_DAMAGE := [45, 65, 90]
+# HP/DPS side still holds: a level-35 player in the best gear obtainable on
+# a first playthrough (epic tier -- mythic is NG+-only and can't drop before
+# this fight) plus their unlocked active skill lands close to ~180 combined
+# DPS, clearing 10840 HP in ~60s (see docs/PROJECT_SUMMARY.md).
+# Damage side re-tuned in the same session that added base_defense/passive-
+# def scaling for the Warrior: those pushed player defense up enough that
+# this fight's original numbers (45/65/90) had drifted noticeably softer
+# than gate3's guardian (Dragon Sovereign, flat 132 dmg/hit) right before
+# it -- the true final boss was hitting *weaker* than the boss guarding its
+# own front door. Re-tuned against the same ~3-4-hits-to-die pattern the
+# three gate bosses already establish: at ~30 effective defense and ~372 HP
+# (level ~35), this is now ~10.6 hits in Phase 1 (room to learn the fight)
+# down to ~3.4 hits in Phase 3 (matching/slightly exceeding Dragon
+# Sovereign's intensity for a proper climax).
+const PHASE_ATTACK_DAMAGE := [65, 100, 140]
 const PHASE_ATTACK_INTERVAL := [1.7, 1.2, 0.8]
 const HIT_FLASH_DURATION := 0.1
 const DEATH_FRAME_TIME := 0.12
