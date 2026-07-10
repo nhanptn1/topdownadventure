@@ -195,32 +195,51 @@ func _physics_process(delta: float) -> void:
 	velocity = input_vector * speed
 	move_and_slide()
 
-	if not is_attacking:
-		if input_vector.x > 0.1:
-			facing_right = true
-		elif input_vector.x < -0.1:
-			facing_right = false
+	# Movement direction always takes priority over an in-progress attack:
+	# facing keeps updating live (never frozen mid-swing), and turning to a
+	# new direction while attacking cancels the current swing immediately
+	# instead of forcing the player to sit through the old-direction pose.
+	if input_vector.x > 0.1:
+		facing_right = true
+	elif input_vector.x < -0.1:
+		facing_right = false
 
-		if input_vector.length() > 0.1:
-			if absf(input_vector.x) >= absf(input_vector.y):
-				facing_direction = Vector2.RIGHT if input_vector.x >= 0.0 else Vector2.LEFT
-			else:
-				facing_direction = Vector2.DOWN if input_vector.y >= 0.0 else Vector2.UP
-			aim_indicator.rotation = facing_direction.angle()
-
-		var has_front: bool = character_data["directional"] and character_data["frame_counts"].has("idle_front")
-		if character_data["directional"] and facing_direction == Vector2.UP:
-			sprite.flip_h = false
-		elif character_data["directional"] and facing_direction == Vector2.DOWN and has_front:
-			sprite.flip_h = false
+	if input_vector.length() > 0.1:
+		var new_facing_direction: Vector2
+		if absf(input_vector.x) >= absf(input_vector.y):
+			new_facing_direction = Vector2.RIGHT if input_vector.x >= 0.0 else Vector2.LEFT
 		else:
-			sprite.flip_h = not facing_right
+			new_facing_direction = Vector2.DOWN if input_vector.y >= 0.0 else Vector2.UP
 
+		var direction_changed := is_attacking and new_facing_direction != facing_direction
+		facing_direction = new_facing_direction
+		aim_indicator.rotation = facing_direction.angle()
+		if direction_changed:
+			_cancel_attack()
+
+	var has_front: bool = character_data["directional"] and character_data["frame_counts"].has("idle_front")
+	if character_data["directional"] and facing_direction == Vector2.UP:
+		sprite.flip_h = false
+	elif character_data["directional"] and facing_direction == Vector2.DOWN and has_front:
+		sprite.flip_h = false
+	else:
+		sprite.flip_h = not facing_right
+
+	if not is_attacking:
 		var moving := input_vector.length() > 0.01
 		sprite.speed_scale = 1.6 if (sprinting and moving) else 1.0
 		var desired_animation := _resolve_anim("walk" if moving else "idle")
 		if sprite.animation != desired_animation:
 			sprite.play(desired_animation)
+
+
+func _cancel_attack() -> void:
+	# The projectile for the current swing already fired at swing-start, so
+	# cutting the follow-through pose short doesn't skip any damage -- it
+	# just lets movement/animation react to the new direction immediately.
+	is_attacking = false
+	if GlobalState.auto_attack_enabled and can_attack and not is_dead:
+		_try_attack()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -308,7 +327,7 @@ func _on_quick_slot_buff_pressed() -> void:
 
 
 func _try_attack() -> void:
-	if not can_attack:
+	if not can_attack or is_attacking:
 		return
 	can_attack = false
 	is_attacking = true
@@ -339,11 +358,16 @@ func _try_attack() -> void:
 func _on_sprite_animation_finished() -> void:
 	if sprite.animation.begins_with("attack"):
 		is_attacking = false
+		# Cooldown may have already elapsed while this (longer) swing
+		# animation was still playing -- fire the queued next attack now
+		# instead of waiting on a timer that already fired.
+		if GlobalState.auto_attack_enabled and can_attack and not is_dead:
+			_try_attack()
 
 
 func _on_attack_cooldown_timeout() -> void:
 	can_attack = true
-	if GlobalState.auto_attack_enabled and not is_dead:
+	if GlobalState.auto_attack_enabled and not is_dead and not is_attacking:
 		_try_attack()
 
 
