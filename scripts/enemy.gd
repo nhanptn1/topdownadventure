@@ -99,8 +99,9 @@ func _ready() -> void:
 	add_to_group("enemy")
 	species_data = SPECIES_DATA.get(species, SPECIES_DATA["dragon"])
 	level = randi_range(min_level, max_level)
-	max_health = BASE_HP + HP_PER_LEVEL * (level - 1) + bonus_max_health
-	attack_damage = BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1) + bonus_attack_damage
+	var difficulty := GlobalState.difficulty_multiplier()
+	max_health = roundi((BASE_HP + HP_PER_LEVEL * (level - 1) + bonus_max_health) * difficulty)
+	attack_damage = roundi((BASE_ATTACK + ATTACK_PER_LEVEL * (level - 1) + bonus_attack_damage) * difficulty)
 	health = max_health
 	if is_final_boss or gate_boss_id != "":
 		level_label.text = "%s — Lv. %d" % [animal_name, level]

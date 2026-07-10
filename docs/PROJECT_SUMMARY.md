@@ -1,6 +1,51 @@
 # TopDownAdventure — Project Summary, Skills, and Next Checklist
 
-*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+*Written 2026-07-10 as a resumption reference, updated same-day after an auto-attack bugfix session, then again after adding a New Game+ postgame loop. This project has been dormant while work continued on the sibling "Endless Archer RPG" project — read this before touching TopDownAdventure again.*
+
+## 0a. Session (2026-07-10): New Game+ / postgame loop
+
+Beating the true final boss (The Withered Sovereign) used to just show a "Victory!"
+popup that unpaused in place — no reason to keep playing. Added a real postgame loop:
+
+- **`GlobalState.ng_plus_level: int`** (new field, persisted in save/load like every
+  other field, defaults to 0 for old saves via `int(parsed.get("ng_plus_level", ...))`)
+  and **`GlobalState.difficulty_multiplier() -> float`** = `1.0 + 0.5 * ng_plus_level`
+  (NG+1 = 1.5x, NG+2 = 2.0x, ...). Only HP/damage scale — attack pacing is untouched,
+  so NG+ hits harder without feeling twitchier.
+- **`GlobalState.start_new_game_plus()`**: increments `ng_plus_level`, resets
+  `boss_defeated` and clears `defeated_gate_bosses` (relocks all gates — they already
+  live-check that array every `_process` frame in `gate.gd`, so no other scene state
+  needed touching), resets `current_map_path` to `map.tscn`, heals to full, saves.
+  Deliberately leaves `player_level`/`xp`/`storage`/`equipped`/`quick_slots` untouched
+  — carrying character progression into the replay is the entire point.
+- **`enemy.gd` `_ready()`**: `max_health`/`attack_damage` now multiply by
+  `GlobalState.difficulty_multiplier()`. Covers every species and every gate
+  boss/guardian (Dragon Sovereign, Gate Warden, Gate Overlord) automatically since
+  they're all `enemy.gd` instances — zero `.tscn` edits needed.
+- **`ultimate_boss.gd`**: `PHASE_ATTACK_DAMAGE` is a `const` array so it can't be
+  rescaled in place; added an instance var `_phase_damage: Array[int]` computed once
+  in `_ready()` from `PHASE_ATTACK_DAMAGE * difficulty_multiplier()`, and swapped all
+  three read-sites (`_on_attack_body_entered`, `_on_attack_timer_timeout`,
+  `_fire_ranged_attack`) to read `_phase_damage[phase]` instead. `max_health` (a plain
+  `@export`, not const) is scaled directly in `_ready()`.
+- **Entry point**: a new "Start New Game+" button next to "Continue Playing" on the
+  existing victory screen (`player.tscn` → `VictoryScreen/Center/VBox`), wired to
+  `player.gd`'s new `_on_new_game_plus_pressed()`. Only ever visible at the moment
+  it's relevant, since `trigger_victory()` is only called from `ultimate_boss.gd`.
+- **HUD**: a small `NGPlusLabel` under the level label, hidden at `ng_plus_level == 0`,
+  showing `"NG+%d"` otherwise (set once in `player.gd _ready()`).
+- No changes needed to `character_select.gd` or `gate.gd` — "Continue" already loads
+  `GlobalState` and jumps to `current_map_path`, and gates already re-check
+  `defeated_gate_bosses` live, so both work correctly against the reset fields as-is.
+- Verified headlessly (disposable test, deleted after passing): a level-5 enemy's
+  HP/damage scale by exactly 1.5x at `ng_plus_level=1`; the final boss's `max_health`
+  and all three `_phase_damage` entries scale the same way; `start_new_game_plus()`
+  resets `ng_plus_level`/`boss_defeated`/`defeated_gate_bosses`/`current_map_path`
+  while leaving `player_level`/`storage` untouched.
+- **Not yet manually playtested in-editor** — headless tests only cover the math and
+  state transitions, not the actual button/UI feel. Worth a quick pass next session:
+  beat (or debug-trigger) the final boss, click "Start New Game+", confirm the drop
+  back into map 1 feels right and a map-1 slime is visibly tougher.
 
 ## 0. Latest session (2026-07-10): auto-attack timing fixes
 
@@ -58,5 +103,6 @@ What's specific to *this* project and worth remembering on top of that:
 1. ~~Decide on the uncommitted `project.godot` diff~~ — resolved; tree is clean as of `e6ae0c3`.
 2. **Manual playtest pass on the auto-attack fixes and the new enemy FOV** — headless tests proved the timing/angle math, but this is all feel; worth a few minutes in the actual editor: auto-attack as warrior/archer/mage (bare and with attack-speed gear) moving in circles around an enemy, plus approaching a few enemies from behind vs. head-on to confirm the FOV cone (140°) feels right, not too generous or too strict.
 3. ~~Enemy AI line-of-sight upgrade~~ — done; see the correction note above. If enemies still feel too easy/too hard to sneak past, `DETECTION_FOV_DEGREES` in `enemy.gd` is the one knob to retune.
+3a. **Manual playtest the New Game+ loop** (see §0a) — headless tests only covered the math/state reset, not the actual button/UI feel or whether 1.5x-per-cycle scaling feels right in practice. `GlobalState.difficulty_multiplier()` is the one knob to retune if NG+1 feels too easy or too brutal.
 4. **No feature-parity backport expected** with Endless Archer RPG — the two projects have deliberately diverged (const-Dict vs per-Resource data, different combat pacing). If a specific polish technique from that project (e.g. the `ShakeCamera`/`offset`-tween pattern, `WorldEnvironment` Glow, or projectile pooling if this game ever needs a bullet-heavy skill) seems worth having here too, treat it as a fresh, deliberate decision each time — not an assumed sync.
 5. **This doc itself** — update it directly the next time meaningful work lands here, rather than letting it drift stale; there's no separate memory-system record of this project's status, so this file is the authoritative one.

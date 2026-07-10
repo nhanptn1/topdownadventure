@@ -56,6 +56,8 @@ const CHARACTER_DATA := {
 @onready var death_countdown_label: Label = $DeathScreen/Center/VBox/CountdownLabel
 @onready var victory_screen: CanvasLayer = $VictoryScreen
 @onready var victory_info_label: Label = $VictoryScreen/Center/VBox/InfoLabel
+@onready var new_game_plus_button: Button = $VictoryScreen/Center/VBox/NewGamePlusButton
+@onready var ng_plus_label: Label = $HUD/Margin/VBox/NGPlusLabel
 @onready var zoom_button: Button = $MinimapLayer/ZoomButton
 @onready var auto_attack_button: Button = $MinimapLayer/AutoAttackButton
 @onready var quick_slot_heal_label: Label = $HUD/Margin/VBox/QuickSlotBar/Heal/Label
@@ -118,6 +120,10 @@ func _ready() -> void:
 	_apply_camera_zoom()
 	auto_attack_button.pressed.connect(_on_auto_attack_button_pressed)
 	_update_auto_attack_button_text()
+	new_game_plus_button.pressed.connect(_on_new_game_plus_pressed)
+	ng_plus_label.visible = GlobalState.ng_plus_level > 0
+	if ng_plus_label.visible:
+		ng_plus_label.text = "NG+%d" % GlobalState.ng_plus_level
 	_update_hud()
 
 
@@ -533,6 +539,13 @@ func trigger_victory() -> void:
 func _on_continue_playing_pressed() -> void:
 	victory_screen.visible = false
 	get_tree().paused = false
+
+
+func _on_new_game_plus_pressed() -> void:
+	GlobalState.start_new_game_plus()
+	victory_screen.visible = false
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/map.tscn")
 
 
 func add_item_to_inventory(item_id: String, amount: int = 1) -> bool:

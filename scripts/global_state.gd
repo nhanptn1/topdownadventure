@@ -13,10 +13,27 @@ var boss_defeated: bool = false
 var defeated_gate_bosses: Array = []
 var camera_zoom: float = 1.3
 var auto_attack_enabled: bool = false
+var ng_plus_level: int = 0
 
 var storage: Dictionary = {}
 var equipped := {"weapon": "", "armor": "", "accessory": ""}
 var quick_slots := {"heal": "", "throwable": "", "buff": ""}
+
+
+func difficulty_multiplier() -> float:
+	return 1.0 + 0.5 * ng_plus_level
+
+
+# Keeps player_level/xp/storage/equipped/quick_slots -- that's the point of a
+# replay. Resets map/gate progress so the whole world (including the final
+# boss) needs re-clearing, now scaled up via difficulty_multiplier().
+func start_new_game_plus() -> void:
+	ng_plus_level += 1
+	boss_defeated = false
+	defeated_gate_bosses.clear()
+	current_map_path = "res://scenes/map.tscn"
+	player_health = player_max_health
+	save_game()
 
 
 func storage_add(item_id: String, amount: int = 1) -> int:
@@ -54,6 +71,7 @@ func save_game() -> void:
 		"defeated_gate_bosses": defeated_gate_bosses,
 		"camera_zoom": camera_zoom,
 		"auto_attack_enabled": auto_attack_enabled,
+		"ng_plus_level": ng_plus_level,
 		"storage": storage,
 		"equipped": equipped,
 		"quick_slots": quick_slots,
@@ -100,6 +118,7 @@ func load_game() -> bool:
 			defeated_gate_bosses.append(entry)
 	camera_zoom = float(parsed.get("camera_zoom", camera_zoom))
 	auto_attack_enabled = bool(parsed.get("auto_attack_enabled", auto_attack_enabled))
+	ng_plus_level = int(parsed.get("ng_plus_level", ng_plus_level))
 	storage = {}
 	for key in loaded_storage.keys():
 		storage[key] = int(loaded_storage[key])

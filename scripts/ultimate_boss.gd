@@ -62,6 +62,10 @@ var health: int
 var phase: Phase = Phase.PHASE_1
 var in_attack_range := false
 var _is_dying := false
+# PHASE_ATTACK_DAMAGE scaled by GlobalState.difficulty_multiplier() -- can't
+# reassign the const array itself, so this is the one actually read at
+# runtime everywhere PHASE_ATTACK_DAMAGE[phase] used to be.
+var _phase_damage: Array[int] = []
 
 
 func _ready() -> void:
@@ -70,6 +74,10 @@ func _ready() -> void:
 		queue_free()
 		return
 	add_to_group("enemy")
+	var difficulty := GlobalState.difficulty_multiplier()
+	max_health = roundi(max_health * difficulty)
+	for d in PHASE_ATTACK_DAMAGE:
+		_phase_damage.append(roundi(d * difficulty))
 	health = max_health
 	level_label.text = "%s — Lv. %d" % [animal_name, level]
 	_build_sprite_frames()
@@ -120,7 +128,7 @@ func _on_attack_body_entered(body: Node) -> void:
 		return
 	if body.is_in_group("player") and body.has_method("take_damage"):
 		in_attack_range = true
-		body.take_damage(PHASE_ATTACK_DAMAGE[phase])
+		body.take_damage(_phase_damage[phase])
 		attack_timer.start()
 
 
@@ -135,7 +143,7 @@ func _on_attack_timer_timeout() -> void:
 		return
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player) and player.has_method("take_damage"):
-		player.take_damage(PHASE_ATTACK_DAMAGE[phase])
+		player.take_damage(_phase_damage[phase])
 
 
 func _on_sprite_frame_changed() -> void:
@@ -153,7 +161,7 @@ func _fire_ranged_attack() -> void:
 	var proj := preload("res://scenes/boss_projectile.tscn").instantiate()
 	proj.direction = dir
 	proj.speed = RANGED_PROJECTILE_SPEED
-	proj.damage = roundi(PHASE_ATTACK_DAMAGE[phase] * RANGED_DAMAGE_FACTOR)
+	proj.damage = roundi(_phase_damage[phase] * RANGED_DAMAGE_FACTOR)
 	proj.global_position = global_position
 	get_tree().current_scene.add_child(proj)
 	AudioManager.play("attack")
