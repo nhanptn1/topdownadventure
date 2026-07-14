@@ -13,7 +13,14 @@ extends CharacterBody2D
 enum Phase { PHASE_1, PHASE_2, PHASE_3, DEAD }
 
 const CHASE_SPEED := 90.0
-const CHASE_STOP_DISTANCE := 35.0
+# Must clear the physical floor set by this boss's own body radius (50) plus
+# the player's body radius (8) = 58px -- the two CharacterBody2D shapes can
+# never get closer than that via move_and_slide, so a stop distance below it
+# (this was 35) meant the boss perpetually tried to close a gap physics
+# wouldn't let it close, shoving into the player every frame. Likewise
+# AttackShape's radius (in ultimate_boss.tscn) must clear that same floor or
+# the player can never physically enter the attack hitbox at all.
+const CHASE_STOP_DISTANCE := 60.0
 
 const PHASE2_HP_RATIO := 0.6
 const PHASE3_HP_RATIO := 0.3
@@ -78,7 +85,15 @@ var _phase_damage: Array[int] = []
 
 func _ready() -> void:
 	if GlobalState.boss_defeated:
+		# The boss itself never respawns once defeated, but the player still
+		# needs a way to reach the victory screen's "Start New Game+" option
+		# on a later visit if they picked "Continue Playing" the first time
+		# (or just wandered off) -- re-show it here instead of only ever
+		# firing once from _die().
 		set_physics_process(false)
+		var player := get_tree().get_first_node_in_group("player")
+		if is_instance_valid(player) and player.has_method("trigger_victory"):
+			player.trigger_victory()
 		queue_free()
 		return
 	add_to_group("enemy")

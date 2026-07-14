@@ -13,6 +13,7 @@ const ICON_PADDING := 6
 @onready var discard_confirm: ConfirmationDialog = $DiscardConfirm
 
 var _pending_discard_id: String = ""
+var _pending_discard_instance_id: String = ""
 
 
 func _ready() -> void:
@@ -40,8 +41,8 @@ func refresh() -> void:
 
 	_clear_children(equip_slots_container)
 	for slot in SLOTS:
-		var item_id: String = GlobalState.equipped.get(slot, "")
-		equip_slots_container.add_child(_build_equip_row(slot, item_id))
+		var instance_id: String = GlobalState.equipped.get(slot, "")
+		equip_slots_container.add_child(_build_equip_row(slot, instance_id))
 
 	_clear_children(quick_slots_container)
 	for category in CATEGORIES:
@@ -49,12 +50,16 @@ func refresh() -> void:
 		quick_slots_container.add_child(_build_quick_slot_row(category, item_id))
 
 	_clear_children(inventory_list_container)
+	# Gear: one row per individual rolled copy (not grouped by item id) so
+	# multiple copies of the same item can show their own distinct stats and
+	# be compared/equipped independently.
+	for item_id in GlobalState.gear_bag.keys():
+		for instance_id in GlobalState.gear_bag_instances(item_id):
+			inventory_list_container.add_child(_build_gear_row(instance_id))
 	for item_id in GlobalState.storage.keys():
 		var item := ItemDatabase.get_item(item_id)
 		var item_type: String = item.get("item_type", "")
-		if item_type in ["weapon", "armor", "accessory"]:
-			inventory_list_container.add_child(_build_gear_row(item_id))
-		elif item_type == "consumable":
+		if item_type == "consumable":
 			inventory_list_container.add_child(_build_consumable_row(item_id))
 		else:
 			inventory_list_container.add_child(_build_material_row(item_id))
@@ -74,26 +79,27 @@ func _update_stats_summary() -> void:
 	stats_label.text = "\n".join(lines)
 
 
-func _build_equip_row(slot: String, item_id: String) -> HBoxContainer:
+func _build_equip_row(slot: String, instance_id: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	var item_id: String = GlobalState.gear_instance_item_id(instance_id) if instance_id != "" else ""
 	row.add_child(_make_icon_slot(item_id))
 	var label := Label.new()
 	label.custom_minimum_size = Vector2(120, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if item_id == "":
+	if instance_id == "":
 		label.text = "%s\n(empty)" % slot.capitalize()
 		label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
 	else:
 		var item := ItemDatabase.get_item(item_id)
-		label.text = "%s\n%s (%s)" % [slot.capitalize(), item.get("name", "?"), _format_stats(GlobalState.get_rolled_stats(item_id))]
+		label.text = "%s\n%s (%s)" % [slot.capitalize(), item.get("name", "?"), _format_stats(GlobalState.gear_instance_stats(instance_id))]
 		label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
 		label.tooltip_text = item.get("description", "")
 	row.add_child(label)
 
-	if item_id != "":
+	if instance_id != "":
 		var button := Button.new()
 		button.text = "Unequip"
 		button.pressed.connect(func() -> void:
@@ -134,20 +140,17 @@ func _build_quick_slot_row(category: String, item_id: String) -> HBoxContainer:
 	return row
 
 
-func _build_gear_row(item_id: String) -> HBoxContainer:
+func _build_gear_row(instance_id: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	var item_id := GlobalState.gear_instance_item_id(instance_id)
 	row.add_child(_make_icon_slot(item_id))
 	var item := ItemDatabase.get_item(item_id)
-	var count: int = GlobalState.storage.get(item_id, 0)
 	var label := Label.new()
 	label.custom_minimum_size = Vector2(220, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var name_text: String = item.get("name", "?")
-	if count > 1:
-		name_text = "%s x%d" % [name_text, count]
-	label.text = "%s (%s)" % [name_text, _format_stats(GlobalState.get_rolled_stats(item_id))]
+	label.text = "%s (%s)" % [item.get("name", "?"), _format_stats(GlobalState.gear_instance_stats(instance_id))]
 	label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
 	label.tooltip_text = item.get("description", "")
 	row.add_child(label)
@@ -155,11 +158,11 @@ func _build_gear_row(item_id: String) -> HBoxContainer:
 	var button := Button.new()
 	button.text = "Equip"
 	button.pressed.connect(func() -> void:
-		player.equip_item(item_id)
+		player.equip_item(instance_id)
 		refresh()
 	)
 	row.add_child(button)
-	row.add_child(_make_discard_button(item_id, item))
+	row.add_child(_make_gear_discard_button(instance_id, item))
 	return row
 
 
@@ -217,6 +220,19 @@ func _make_discard_button(item_id: String, item: Dictionary) -> Button:
 	button.text = "Discard"
 	button.pressed.connect(func() -> void:
 		_pending_discard_id = item_id
+		_pending_discard_instance_id = ""
+		discard_confirm.dialog_text = "Discard %s?" % item.get("name", "this item")
+		discard_confirm.popup_centered()
+	)
+	return button
+
+
+func _make_gear_discard_button(instance_id: String, item: Dictionary) -> Button:
+	var button := Button.new()
+	button.text = "Discard"
+	button.pressed.connect(func() -> void:
+		_pending_discard_instance_id = instance_id
+		_pending_discard_id = ""
 		discard_confirm.dialog_text = "Discard %s?" % item.get("name", "this item")
 		discard_confirm.popup_centered()
 	)
@@ -224,7 +240,11 @@ func _make_discard_button(item_id: String, item: Dictionary) -> Button:
 
 
 func _on_discard_confirmed() -> void:
-	if _pending_discard_id != "":
+	if _pending_discard_instance_id != "":
+		player.discard_gear_instance(_pending_discard_instance_id)
+		_pending_discard_instance_id = ""
+		refresh()
+	elif _pending_discard_id != "":
 		player.discard_item(_pending_discard_id)
 		_pending_discard_id = ""
 		refresh()

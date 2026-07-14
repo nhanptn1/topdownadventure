@@ -108,7 +108,7 @@ const RARITY_RANK := {"common": 0, "rare": 1, "epic": 2, "mythic": 3}
 # Consumable categories that auto-fill their quick slot on pickup instead of
 # requiring a trip to the bag (HP potion, speed tonic, bombs).
 const AUTO_QUICK_SLOT_CATEGORIES := ["heal", "buff", "throwable"]
-var _pending_equip_id := ""
+var _pending_equip_instance_id := ""
 
 var _shake_strength := 0.0
 var _quick_slot_display_timer := 0.0
@@ -203,9 +203,15 @@ func _physics_process(delta: float) -> void:
 	# cooldown -- _try_skill() already no-ops gracefully while mid-swing,
 	# dead, on cooldown, or still locked, so it's safe to just try it every
 	# frame the toggle is on rather than threading it through the attack
-	# animation's own chained re-fire callbacks.
+	# animation's own chained re-fire callbacks. Auto-cast additionally
+	# requires an actual enemy in range -- unlike a manual R-press (which can
+	# still swing at empty air like a normal attack), auto-cast would
+	# otherwise keep firing the skill into empty space on cooldown forever
+	# while no enemy is nearby.
 	if GlobalState.auto_attack_enabled and skill_cooldown_remaining <= 0.0 and not is_attacking:
-		_try_skill()
+		var auto_skill := SkillDatabase.get_skill(GlobalState.selected_character, level)
+		if not auto_skill.is_empty() and _find_nearest_enemy_in_range(_skill_search_range(auto_skill)) != null:
+			_try_skill()
 	_quick_slot_display_timer += delta
 	if _quick_slot_display_timer >= QUICK_SLOT_DISPLAY_INTERVAL:
 		_quick_slot_display_timer = 0.0
@@ -493,16 +499,14 @@ func _spawn_skill_effect(skill: Dictionary, pos: Vector2, radius: float) -> void
 	effect.setup(tex, radius * 1.8)
 
 
-# Both skills target the nearest enemy in range so the damage and the
-# visual effect actually land on the foe being hit, not just somewhere near
-# the player -- falls back to a point in front of the player only when
-# nothing's in range (e.g. swinging at empty air), so the skill still has
-# somewhere sensible to land. Flame Slash searches at roughly its melee
-# knife range; Meteor searches much further out, matching its ranged-spell
-# identity.
-func _skill_target_position(skill: Dictionary) -> Vector2:
+# Flame Slash searches at roughly its melee knife range; Meteor searches
+# much further out, matching its ranged-spell identity.
+func _skill_search_range(skill: Dictionary) -> float:
 	var is_meteor: bool = skill.get("id", "") == "meteor"
-	var search_range := 400.0 if is_meteor else 150.0
+	return 400.0 if is_meteor else 150.0
+
+
+func _find_nearest_enemy_in_range(search_range: float) -> Node2D:
 	var nearest: Node2D = null
 	var nearest_dist := search_range
 	for enemy in get_tree().get_nodes_in_group("enemy"):
@@ -512,6 +516,17 @@ func _skill_target_position(skill: Dictionary) -> Vector2:
 		if d < nearest_dist:
 			nearest_dist = d
 			nearest = enemy
+	return nearest
+
+
+# Both skills target the nearest enemy in range so the damage and the
+# visual effect actually land on the foe being hit, not just somewhere near
+# the player -- falls back to a point in front of the player only when
+# nothing's in range (e.g. a manual cast swinging at empty air), so the
+# skill still has somewhere sensible to land.
+func _skill_target_position(skill: Dictionary) -> Vector2:
+	var is_meteor: bool = skill.get("id", "") == "meteor"
+	var nearest := _find_nearest_enemy_in_range(_skill_search_range(skill))
 	if nearest:
 		return nearest.global_position
 	var fallback_dist := 200.0 if is_meteor else 40.0
@@ -718,11 +733,19 @@ func _on_new_game_plus_pressed() -> void:
 
 
 func add_item_to_inventory(item_id: String, amount: int = 1) -> bool:
-	var added := GlobalState.storage_add(item_id, amount)
-	if added == 0:
-		return false
-	_maybe_auto_assign_quick_slot(item_id)
-	_maybe_prompt_equip(item_id)
+	if ItemDatabase.get_item(item_id).get("slot", "") != "":
+		# Gear: each copy rolls its own independent stats and becomes its own
+		# distinguishable instance (see global_state.gd) rather than being
+		# folded into a flat item_id -> count stack.
+		var last_instance := ""
+		for i in range(maxi(amount, 1)):
+			last_instance = GlobalState.gear_add(item_id)
+		_maybe_prompt_equip(last_instance)
+	else:
+		var added := GlobalState.storage_add(item_id, amount)
+		if added == 0:
+			return false
+		_maybe_auto_assign_quick_slot(item_id)
 	if inventory_ui.visible:
 		inventory_ui.refresh()
 	_update_quick_slot_cooldown_display()
@@ -739,42 +762,46 @@ func _maybe_auto_assign_quick_slot(item_id: String) -> void:
 		GlobalState.quick_slots[category] = item_id
 
 
-func _maybe_prompt_equip(item_id: String) -> void:
+func _maybe_prompt_equip(instance_id: String) -> void:
+	if instance_id == "":
+		return
+	var item_id := GlobalState.gear_instance_item_id(instance_id)
 	var item := ItemDatabase.get_item(item_id)
 	var slot: String = item.get("slot", "")
 	if slot == "":
 		return  # not equippable gear (consumable/material/quest item)
-	var equipped_id: String = GlobalState.equipped.get(slot, "")
+	var equipped_instance: String = GlobalState.equipped.get(slot, "")
 	var is_upgrade := false
-	if equipped_id == "":
+	if equipped_instance == "":
 		is_upgrade = true
 	else:
-		var current_rarity: String = ItemDatabase.get_item(equipped_id).get("rarity", "common")
+		var current_item_id := GlobalState.gear_instance_item_id(equipped_instance)
+		var current_rarity: String = ItemDatabase.get_item(current_item_id).get("rarity", "common")
 		var new_rarity: String = item.get("rarity", "common")
 		is_upgrade = RARITY_RANK.get(new_rarity, 0) > RARITY_RANK.get(current_rarity, 0)
 	if not is_upgrade:
 		return
-	_pending_equip_id = item_id
-	var verb := "Equip" if equipped_id == "" else "Equip upgrade"
+	_pending_equip_instance_id = instance_id
+	var verb := "Equip" if equipped_instance == "" else "Equip upgrade"
 	equip_prompt.dialog_text = "%s: %s (%s)?" % [verb, item.get("name", "?"), str(item.get("rarity", "common")).capitalize()]
 	get_tree().paused = true
 	equip_prompt.popup_centered()
 
 
 func _on_equip_prompt_confirmed() -> void:
-	if _pending_equip_id != "":
-		equip_item(_pending_equip_id)
-		_pending_equip_id = ""
+	if _pending_equip_instance_id != "":
+		equip_item(_pending_equip_instance_id)
+		_pending_equip_instance_id = ""
 
 
 func _on_equip_prompt_canceled() -> void:
-	_pending_equip_id = ""
+	_pending_equip_instance_id = ""
 
 
 func _on_equip_prompt_visibility_changed() -> void:
 	# AcceptDialog can hide() itself before or after emitting confirmed/
 	# canceled depending on path, so this only handles unpausing -- clearing
-	# _pending_equip_id is the job of the confirmed/canceled handlers above,
+	# _pending_equip_instance_id is the job of the confirmed/canceled handlers above,
 	# since relying on visibility timing here caused a real race (the dialog
 	# hid and cleared the pending id before "confirmed" ran, silently
 	# dropping the equip).
@@ -783,20 +810,23 @@ func _on_equip_prompt_visibility_changed() -> void:
 	get_tree().paused = false
 
 
-func equip_item(item_id: String) -> void:
+func equip_item(instance_id: String) -> void:
+	var item_id := GlobalState.gear_instance_item_id(instance_id)
 	var item := ItemDatabase.get_item(item_id)
 	if item.is_empty():
 		return
 	var slot: String = item.get("slot", "")
 	if slot == "":
 		return
-	var previous_id: String = GlobalState.equipped.get(slot, "")
+	var previous_instance: String = GlobalState.equipped.get(slot, "")
 	var old_hp_total := _total_hp_bonus()
 
-	GlobalState.storage_remove(item_id, 1)
-	if previous_id != "":
-		GlobalState.storage_add(previous_id, 1)
-	GlobalState.equipped[slot] = item_id
+	GlobalState.gear_take_from_bag(instance_id)
+	if previous_instance != "":
+		# The previously-equipped copy goes back into the bag with its own
+		# already-rolled stats intact -- swapping gear never rerolls it.
+		GlobalState.gear_move_to_bag(previous_instance)
+	GlobalState.equipped[slot] = instance_id
 
 	var new_hp_total := _total_hp_bonus()
 	max_health += new_hp_total - old_hp_total
@@ -807,13 +837,13 @@ func equip_item(item_id: String) -> void:
 
 
 func unequip_slot(slot: String) -> void:
-	var item_id: String = GlobalState.equipped.get(slot, "")
-	if item_id == "":
+	var instance_id: String = GlobalState.equipped.get(slot, "")
+	if instance_id == "":
 		return
 	var old_hp_total := _total_hp_bonus()
 
 	GlobalState.equipped[slot] = ""
-	GlobalState.storage_add(item_id, 1)
+	GlobalState.gear_move_to_bag(instance_id)
 
 	var new_hp_total := _total_hp_bonus()
 	max_health += new_hp_total - old_hp_total
@@ -846,6 +876,11 @@ func discard_item(item_id: String) -> void:
 	if count <= 0:
 		return
 	GlobalState.storage_remove(item_id, count)
+	GlobalState.save_game()
+
+
+func discard_gear_instance(instance_id: String) -> void:
+	GlobalState.gear_discard_instance(instance_id)
 	GlobalState.save_game()
 
 
@@ -925,9 +960,9 @@ func _quick_slot_text(category: String) -> String:
 func _total_hp_bonus() -> int:
 	var total := 0
 	for slot in GlobalState.equipped.keys():
-		var item_id: String = GlobalState.equipped[slot]
-		if item_id != "":
-			total += int(GlobalState.get_rolled_stat(item_id, "hp"))
+		var instance_id: String = GlobalState.equipped[slot]
+		if instance_id != "":
+			total += int(GlobalState.gear_instance_stat(instance_id, "hp"))
 	var passive_stats := SkillDatabase.get_passive_stats(GlobalState.selected_character, level)
 	total += int(passive_stats.get("hp", 0))
 	return total
@@ -941,15 +976,15 @@ func _recalculate_equipment_stats() -> void:
 	var atk_speed := 0.0
 	var spd := 0.0
 	for slot in GlobalState.equipped.keys():
-		var item_id: String = GlobalState.equipped[slot]
-		if item_id == "":
+		var instance_id: String = GlobalState.equipped[slot]
+		if instance_id == "":
 			continue
-		atk += int(GlobalState.get_rolled_stat(item_id, "atk"))
-		def += int(GlobalState.get_rolled_stat(item_id, "def"))
-		crit += GlobalState.get_rolled_stat(item_id, "crit_chance")
-		stun += GlobalState.get_rolled_stat(item_id, "stun_chance")
-		atk_speed += GlobalState.get_rolled_stat(item_id, "attack_speed")
-		spd += GlobalState.get_rolled_stat(item_id, "speed")
+		atk += int(GlobalState.gear_instance_stat(instance_id, "atk"))
+		def += int(GlobalState.gear_instance_stat(instance_id, "def"))
+		crit += GlobalState.gear_instance_stat(instance_id, "crit_chance")
+		stun += GlobalState.gear_instance_stat(instance_id, "stun_chance")
+		atk_speed += GlobalState.gear_instance_stat(instance_id, "attack_speed")
+		spd += GlobalState.gear_instance_stat(instance_id, "speed")
 	# Passive skill (see skill_database.gd) is always active, on top of gear,
 	# and scales with character level (passive_level_for()).
 	var passive_stats := SkillDatabase.get_passive_stats(GlobalState.selected_character, level)
