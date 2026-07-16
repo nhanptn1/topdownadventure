@@ -92,16 +92,32 @@ func difficulty_multiplier() -> float:
 	return 1.0 + 0.5 * ng_plus_level
 
 
-# Keeps player_level/xp/storage/gear_instances/gear_bag/equipped/quick_slots
-# -- that's the point of a replay. Resets map/gate progress so the whole
-# world (including the final boss) needs re-clearing, now scaled up via
-# difficulty_multiplier().
+# Must match player.gd's BASE_MAX_HEALTH -- there's no clean cross-script
+# const reference (player.gd isn't a class_name/singleton), so this is
+# duplicated rather than reached into the scene script from here.
+const NG_PLUS_RESET_MAX_HEALTH := 100
+
+# A real fresh run under a harder difficulty_multiplier(), not a "keep
+# everything" replay -- resets level/xp/HP back to a level-1 baseline and
+# wipes all gear/consumables/materials, so the higher NG+ scaling actually
+# has to be faced rather than instantly trivialized by carried-over gear.
+# selected_character is deliberately left alone (still the same character),
+# and map/gate progress resets so the whole world (including the final
+# boss) needs re-clearing, now scaled up via difficulty_multiplier().
 func start_new_game_plus() -> void:
 	ng_plus_level += 1
 	boss_defeated = false
 	defeated_gate_bosses.clear()
 	current_map_path = "res://scenes/map.tscn"
+	player_level = 1
+	player_xp = 0
+	player_max_health = NG_PLUS_RESET_MAX_HEALTH
 	player_health = player_max_health
+	storage.clear()
+	quick_slots = {"heal": "", "throwable": "", "buff": ""}
+	gear_instances.clear()
+	gear_bag.clear()
+	equipped = {"weapon": "", "armor": "", "accessory": ""}
 	save_game()
 
 
