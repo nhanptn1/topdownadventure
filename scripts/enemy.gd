@@ -12,6 +12,7 @@ const HP_PER_LEVEL := 3
 const BASE_ATTACK := 4
 const ATTACK_PER_LEVEL := 2
 const DETECTION_FOV_DEGREES := 140.0
+const RANGED_ATTACK_COOLDOWN := 1.6
 
 const SPECIES_DATA := {
 	"dragon": {
@@ -60,6 +61,14 @@ const SPECIES_DATA := {
 @export var bonus_drop_item_id: String = ""
 @export var bonus_drop_amount: int = 0
 @export var map_tier: int = 1
+# Ranged variant: reuses an existing species' sprite set (no new art) but
+# behaves differently in CHASE -- holds at ranged_attack_range and fires
+# boss_projectile.gd's proven projectile instead of always closing to melee.
+# Its AttackArea/melee contact damage still works unchanged if the player
+# closes the distance themselves.
+@export var is_ranged: bool = false
+@export var ranged_attack_range: float = 220.0
+@export var ranged_projectile_speed: float = 220.0
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var detection_area: Area2D = $DetectionArea
@@ -85,6 +94,7 @@ var wander_target: Vector2
 var is_wandering := false
 
 var is_stunned := false
+var _ranged_cooldown_remaining := 0.0
 
 
 func _ready() -> void:
@@ -156,9 +166,12 @@ func _resolve_anim(action: String) -> String:
 		return action + "_side"
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
+
+	if is_ranged and _ranged_cooldown_remaining > 0.0:
+		_ranged_cooldown_remaining = maxf(_ranged_cooldown_remaining - delta, 0.0)
 
 	if is_stunned:
 		velocity = Vector2.ZERO
@@ -174,7 +187,14 @@ func _physics_process(_delta: float) -> void:
 
 	if state == State.CHASE and is_instance_valid(target_player):
 		var to_target := target_player.global_position - global_position
-		if in_attack_range:
+		if is_ranged:
+			if to_target.length() > ranged_attack_range:
+				velocity = to_target.normalized() * CHASE_SPEED
+			else:
+				velocity = Vector2.ZERO
+				if not in_attack_range:
+					_try_ranged_attack()
+		elif in_attack_range:
 			velocity = Vector2.ZERO
 		else:
 			velocity = to_target.normalized() * CHASE_SPEED
@@ -328,6 +348,23 @@ func _on_attack_body_exited(body: Node) -> void:
 	if body.is_in_group("player"):
 		in_attack_range = false
 		attack_timer.stop()
+
+
+# Same boss_projectile.gd scene ultimate_boss.gd fires from its ranged
+# "enraged" attack -- it already detects the player's physics body directly
+# (no Hurtbox needed on the player side), so it's reused here as-is.
+func _try_ranged_attack() -> void:
+	if is_stunned or _ranged_cooldown_remaining > 0.0 or not is_instance_valid(target_player):
+		return
+	_ranged_cooldown_remaining = RANGED_ATTACK_COOLDOWN
+	var dir: Vector2 = (target_player.global_position - global_position).normalized()
+	var proj := preload("res://scenes/boss_projectile.tscn").instantiate()
+	proj.direction = dir
+	proj.speed = ranged_projectile_speed
+	proj.damage = attack_damage
+	proj.global_position = global_position
+	get_tree().current_scene.add_child(proj)
+	AudioManager.play("attack")
 
 
 func _on_attack_timer_timeout() -> void:

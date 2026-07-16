@@ -24,6 +24,9 @@ const MAX_PLACEMENT_ATTEMPTS := 24
 @export var map_tier: int = 1
 @export var avoid_position: Vector2 = Vector2.ZERO
 @export var avoid_radius: float = 0.0
+@export var is_ranged: bool = false
+@export var ranged_attack_range: float = 220.0
+@export var ranged_projectile_speed: float = 220.0
 
 
 func _ready() -> void:
@@ -49,6 +52,9 @@ func _spawn_dragon() -> void:
 	dragon.bonus_max_health = bonus_max_health
 	dragon.bonus_attack_damage = bonus_attack_damage
 	dragon.map_tier = map_tier
+	dragon.is_ranged = is_ranged
+	dragon.ranged_attack_range = ranged_attack_range
+	dragon.ranged_projectile_speed = ranged_projectile_speed
 	dragon.scale = Vector2(enemy_scale, enemy_scale)
 	dragon.global_position = _find_spawn_position()
 	add_child(dragon)

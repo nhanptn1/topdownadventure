@@ -108,6 +108,24 @@ map_tier = 2
 avoid_position = Vector2(1750, 540)
 avoid_radius = 350.0
 
+[node name="SkeletonArcherSpawner" type="Node2D" parent="."]
+script = ExtResource("2")
+map_size = Vector2(1920, 1200)
+dragon_count = 4
+respawn_delay = 11.0
+animal_name = "Skeleton Archer"
+is_aggressive = true
+min_level = 12
+max_level = 17
+species = "skeleton"
+body_tint = Color(0.55, 0.8, 0.55, 1)
+map_tier = 2
+is_ranged = true
+ranged_attack_range = 220.0
+ranged_projectile_speed = 220.0
+avoid_position = Vector2(1750, 540)
+avoid_radius = 350.0
+
 [node name="Gate" parent="." instance=ExtResource("11")]
 position = Vector2(1830, 600)
 required_level = 20
