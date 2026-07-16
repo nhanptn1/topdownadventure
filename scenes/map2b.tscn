@@ -1,0 +1,190 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/dragon_spawner.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tile_grass.png" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/spawn_point.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/gate.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/decor_rock.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/decor_mountain.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/decor_tree_dead.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/enemy.tscn" id="9"]
+
+[sub_resource type="RectangleShape2D" id="WallHoriz"]
+size = Vector2(1920, 32)
+
+[sub_resource type="RectangleShape2D" id="WallVert"]
+size = Vector2(32, 1200)
+
+[node name="Map2b" type="Node2D"]
+
+[node name="Ground" type="Sprite2D" parent="."]
+texture = ExtResource("3")
+centered = false
+region_enabled = true
+region_rect = Rect2(0, 0, 1920, 1200)
+texture_repeat = 2
+modulate = Color(0.72, 0.82, 0.95, 1)
+
+[node name="WallTop" type="StaticBody2D" parent="."]
+position = Vector2(960, 16)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallTop"]
+shape = SubResource("WallHoriz")
+
+[node name="Visual" type="Polygon2D" parent="WallTop"]
+polygon = PackedVector2Array(-960, -16, 960, -16, 960, 16, -960, 16)
+color = Color(0.25, 0.3, 0.35, 1)
+
+[node name="WallBottom" type="StaticBody2D" parent="."]
+position = Vector2(960, 1184)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallBottom"]
+shape = SubResource("WallHoriz")
+
+[node name="Visual" type="Polygon2D" parent="WallBottom"]
+polygon = PackedVector2Array(-960, -16, 960, -16, 960, 16, -960, 16)
+color = Color(0.25, 0.3, 0.35, 1)
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(16, 600)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallLeft"]
+shape = SubResource("WallVert")
+
+[node name="Visual" type="Polygon2D" parent="WallLeft"]
+polygon = PackedVector2Array(-16, -600, 16, -600, 16, 600, -16, 600)
+color = Color(0.25, 0.3, 0.35, 1)
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(1904, 600)
+collision_layer = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallRight"]
+shape = SubResource("WallVert")
+
+[node name="Visual" type="Polygon2D" parent="WallRight"]
+polygon = PackedVector2Array(-16, -600, 16, -600, 16, 600, -16, 600)
+color = Color(0.25, 0.3, 0.35, 1)
+
+[node name="Player" parent="." instance=ExtResource("1")]
+position = Vector2(281, 600)
+
+[node name="SpawnPoint" parent="." instance=ExtResource("4")]
+position = Vector2(281, 600)
+
+[node name="ZombieSpawner" type="Node2D" parent="."]
+script = ExtResource("2")
+map_size = Vector2(1920, 1200)
+dragon_count = 8
+respawn_delay = 9.0
+animal_name = "Frozen Zombie"
+is_aggressive = true
+min_level = 18
+max_level = 22
+species = "zombie"
+body_tint = Color(0.75, 0.85, 0.95, 1)
+map_tier = 3
+avoid_position = Vector2(1750, 540)
+avoid_radius = 350.0
+
+[node name="DrakeSpawner" type="Node2D" parent="."]
+script = ExtResource("2")
+map_size = Vector2(1920, 1200)
+dragon_count = 6
+respawn_delay = 10.0
+animal_name = "Frost Drake"
+is_aggressive = true
+min_level = 18
+max_level = 22
+species = "dragon"
+body_tint = Color(0.5, 0.75, 0.95, 1)
+map_tier = 3
+is_ranged = true
+ranged_attack_range = 220.0
+ranged_projectile_speed = 220.0
+avoid_position = Vector2(1750, 540)
+avoid_radius = 350.0
+
+[node name="Gate" parent="." instance=ExtResource("5")]
+position = Vector2(1830, 600)
+required_level = 22
+next_map_path = "res://scenes/map3.tscn"
+required_boss_id = "gate2b_boss"
+label_text_override = "Defeat the Frostbound Warden"
+
+[node name="GateBoss2b" parent="." instance=ExtResource("9")]
+position = Vector2(1700, 480)
+scale = Vector2(1.4, 1.4)
+species = "skeleton"
+animal_name = "Frostbound Warden"
+is_aggressive = true
+min_level = 29
+max_level = 29
+body_tint = Color(0.75, 0.88, 0.97, 1)
+wander_radius = 20.0
+drop_chance = 1.0
+is_guardian = true
+gate_boss_id = "gate2b_boss"
+bonus_max_health = 3185
+bonus_attack_damage = 60
+map_tier = 3
+bonus_drop_item_id = "healing_potion"
+bonus_drop_amount = 15
+
+[node name="Mountain1" parent="." instance=ExtResource("7")]
+position = Vector2(70, 70)
+
+[node name="Mountain2" parent="." instance=ExtResource("7")]
+position = Vector2(1850, 70)
+
+[node name="Mountain3" parent="." instance=ExtResource("7")]
+position = Vector2(70, 1130)
+
+[node name="Mountain4" parent="." instance=ExtResource("7")]
+position = Vector2(1850, 1130)
+
+[node name="Rock1" parent="." instance=ExtResource("6")]
+position = Vector2(450, 300)
+
+[node name="Rock2" parent="." instance=ExtResource("6")]
+position = Vector2(450, 850)
+
+[node name="Rock3" parent="." instance=ExtResource("6")]
+position = Vector2(960, 450)
+
+[node name="Rock4" parent="." instance=ExtResource("6")]
+position = Vector2(960, 750)
+
+[node name="Rock5" parent="." instance=ExtResource("6")]
+position = Vector2(1300, 900)
+
+[node name="Rock6" parent="." instance=ExtResource("6")]
+position = Vector2(600, 600)
+
+[node name="Rock7" parent="." instance=ExtResource("6")]
+position = Vector2(150, 750)
+
+[node name="Rock8" parent="." instance=ExtResource("6")]
+position = Vector2(150, 450)
+
+[node name="Rock9" parent="." instance=ExtResource("6")]
+position = Vector2(1050, 150)
+
+[node name="Rock10" parent="." instance=ExtResource("6")]
+position = Vector2(1050, 1050)
+
+[node name="DeadTree1" parent="." instance=ExtResource("8")]
+position = Vector2(120, 150)
+
+[node name="DeadTree2" parent="." instance=ExtResource("8")]
+position = Vector2(120, 1050)
+
+[node name="DeadTree3" parent="." instance=ExtResource("8")]
+position = Vector2(700, 150)
+
+[node name="DeadTree4" parent="." instance=ExtResource("8")]
+position = Vector2(700, 1050)

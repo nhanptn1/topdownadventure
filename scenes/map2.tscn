@@ -129,7 +129,7 @@ avoid_radius = 350.0
 [node name="Gate" parent="." instance=ExtResource("11")]
 position = Vector2(1830, 600)
 required_level = 20
-next_map_path = "res://scenes/map3.tscn"
+next_map_path = "res://scenes/map2b.tscn"
 required_boss_id = "gate2_boss"
 
 [node name="GateBoss2" parent="." instance=ExtResource("15")]
