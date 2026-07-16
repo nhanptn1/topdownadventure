@@ -8,12 +8,16 @@ const ICON_PADDING := 6
 @onready var player: Node = get_parent()
 @onready var stats_label: Label = $Center/PanelBG/Margin/Content/BodyRow/LeftColumn/StatsLabel
 @onready var equip_slots_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/LeftColumn/EquipSlots
-@onready var quick_slots_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/QuickSlotContainer
-@onready var inventory_list_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/InvList
+@onready var bag_section: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection
+@onready var quick_slots_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection/QuickSlotContainer
+@onready var inventory_list_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection/InvList
+@onready var craft_section: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/CraftSection
+@onready var craft_list_container: VBoxContainer = $Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/CraftSection/CraftList
 @onready var discard_confirm: ConfirmationDialog = $DiscardConfirm
 
 var _pending_discard_id: String = ""
 var _pending_discard_instance_id: String = ""
+var _craft_mode: bool = false
 
 
 func _ready() -> void:
@@ -28,6 +32,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func open() -> void:
 	visible = true
 	get_tree().paused = true
+	_craft_mode = false
+	refresh()
+
+
+func _on_craft_toggle_pressed() -> void:
+	_craft_mode = not _craft_mode
 	refresh()
 
 
@@ -49,6 +59,9 @@ func refresh() -> void:
 		var item_id: String = GlobalState.quick_slots.get(category, "")
 		quick_slots_container.add_child(_build_quick_slot_row(category, item_id))
 
+	bag_section.visible = not _craft_mode
+	craft_section.visible = _craft_mode
+
 	_clear_children(inventory_list_container)
 	# Gear: one row per individual rolled copy (not grouped by item id) so
 	# multiple copies of the same item can show their own distinct stats and
@@ -63,6 +76,10 @@ func refresh() -> void:
 			inventory_list_container.add_child(_build_consumable_row(item_id))
 		else:
 			inventory_list_container.add_child(_build_material_row(item_id))
+
+	_clear_children(craft_list_container)
+	for item_id in ItemDatabase.CRAFTING_RECIPES.keys():
+		craft_list_container.add_child(_build_craft_row(item_id))
 
 
 func _update_stats_summary() -> void:
@@ -163,6 +180,41 @@ func _build_gear_row(instance_id: String) -> HBoxContainer:
 	)
 	row.add_child(button)
 	row.add_child(_make_gear_discard_button(instance_id, item))
+	return row
+
+
+func _build_craft_row(item_id: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.add_child(_make_icon_slot(item_id))
+	var item := ItemDatabase.get_item(item_id)
+	var recipe := ItemDatabase.get_recipe(item_id)
+	var label := Label.new()
+	label.custom_minimum_size = Vector2(260, 0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var cost_parts: Array[String] = []
+	var affordable := true
+	for material_id in recipe.keys():
+		var need: int = recipe[material_id]
+		var have: int = GlobalState.storage.get(material_id, 0)
+		if have < need:
+			affordable = false
+		var mat_name: String = ItemDatabase.get_item(material_id).get("name", material_id)
+		cost_parts.append("%s %d/%d" % [mat_name, have, need])
+	label.text = "%s (%s)\n%s" % [item.get("name", "?"), str(item.get("rarity", "common")).capitalize(), ", ".join(cost_parts)]
+	label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
+	label.tooltip_text = item.get("description", "")
+	row.add_child(label)
+
+	var button := Button.new()
+	button.text = "Craft"
+	button.disabled = not affordable
+	button.pressed.connect(func() -> void:
+		player.craft_item(item_id)
+		refresh()
+	)
+	row.add_child(button)
 	return row
 
 

@@ -50,6 +50,10 @@ theme_override_font_sizes/font_size = 24
 horizontal_alignment = 1
 text = "Inventory"
 
+[node name="CraftToggleButton" type="Button" parent="Center/PanelBG/Margin/Content/TitleBar"]
+layout_mode = 2
+text = "Craft"
+
 [node name="CloseButton" type="Button" parent="Center/PanelBG/Margin/Content/TitleBar"]
 layout_mode = 2
 custom_minimum_size = Vector2(32, 32)
@@ -95,21 +99,39 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="QuickSlotHeader" type="Label" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+[node name="BagSection" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="QuickSlotHeader" type="Label" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
 text = "Quick Slots"
 
-[node name="QuickSlotContainer" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+[node name="QuickSlotContainer" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="InvHeader" type="Label" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+[node name="InvHeader" type="Label" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
 text = "Inventory"
 
-[node name="InvList" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+[node name="InvList" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/BagSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CraftSection" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList"]
+layout_mode = 2
+visible = false
+theme_override_constants/separation = 8
+
+[node name="CraftHeader" type="Label" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/CraftSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
+text = "Craft"
+
+[node name="CraftList" type="VBoxContainer" parent="Center/PanelBG/Margin/Content/BodyRow/RightScroll/RightList/CraftSection"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
@@ -119,4 +141,5 @@ theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
 horizontal_alignment = 1
 text = "Press I to close"
 
+[connection signal="pressed" from="Center/PanelBG/Margin/Content/TitleBar/CraftToggleButton" to="." method="_on_craft_toggle_pressed"]
 [connection signal="pressed" from="Center/PanelBG/Margin/Content/TitleBar/CloseButton" to="." method="close"]

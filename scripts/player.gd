@@ -884,6 +884,24 @@ func discard_gear_instance(instance_id: String) -> void:
 	GlobalState.save_game()
 
 
+func craft_item(item_id: String) -> bool:
+	var recipe := ItemDatabase.get_recipe(item_id)
+	if recipe.is_empty():
+		return false
+	for material_id in recipe.keys():
+		if GlobalState.storage.get(material_id, 0) < recipe[material_id]:
+			return false
+	for material_id in recipe.keys():
+		GlobalState.storage_remove(material_id, recipe[material_id])
+	# add_item_to_inventory() already rolls a fresh independent instance via
+	# GlobalState.gear_add() and pops the equip-upgrade prompt if it's better
+	# than what's equipped -- crafted gear behaves identically to a dropped
+	# item once created.
+	add_item_to_inventory(item_id)
+	AudioManager.play("pickup")
+	return true
+
+
 func _use_quick_slot(category: String) -> void:
 	var item_id: String = GlobalState.quick_slots.get(category, "")
 	if item_id == "":

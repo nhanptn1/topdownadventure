@@ -179,6 +179,27 @@ const STAT_ROLL_MIN_RATIO := 0.6
 const INT_STATS := ["atk", "def", "hp"]
 
 
+# item_id -> {material_id: count}, common/rare/epic tiers only -- mythic gear
+# is deliberately not craftable, staying a NG+-exclusive drop-only reward (see
+# MYTHIC_DROP_CHANCE above). Costs scale with rarity; first-pass numbers,
+# retune here if farming feels too fast/slow.
+const CRAFTING_RECIPES := {
+	"weathered_bow": {"iron_ingot": 2},
+	"travelers_tunic": {"iron_ingot": 2},
+	"iron_ring": {"iron_ingot": 2},
+	"frostwind_bow": {"iron_ingot": 4, "ruby_gem": 3},
+	"steel_plate_armor": {"iron_ingot": 4, "ruby_gem": 3},
+	"sapphire_ring": {"iron_ingot": 4, "ruby_gem": 3},
+	"cursed_runebow": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
+	"voidscale_armor": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
+	"void_ring": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
+}
+
+
+static func get_recipe(item_id: String) -> Dictionary:
+	return CRAFTING_RECIPES.get(item_id, {})
+
+
 static func get_item(id: String) -> Dictionary:
 	return ITEMS.get(id, {})
 
