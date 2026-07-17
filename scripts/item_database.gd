@@ -148,7 +148,10 @@ const CONSUMABLE_IDS := ["healing_potion", "healing_potion", "healing_potion", "
 const MATERIAL_IDS := ["dragon_scale", "iron_ingot", "ruby_gem"]
 
 const SLOTS := ["weapon", "armor", "accessory"]
-const CATEGORY_WEIGHTS := {"gear": 0.55, "consumable": 0.40, "material": 0.05}
+# material bumped 0.05 -> 0.20 (first-pass, retune here) since it was too
+# slow a farm to feed the crafting system at any real pace; taken from
+# consumable rather than gear so the core gear-drop loop is untouched.
+const CATEGORY_WEIGHTS := {"gear": 0.55, "consumable": 0.25, "material": 0.20}
 
 # Per-map-tier rarity gates: Map 1 (white/blue only, no epic), Map 2 (blue +
 # a low chance of epic), Map 3 (epic dominant, full rarity range unlocked).
@@ -179,20 +182,21 @@ const STAT_ROLL_MIN_RATIO := 0.6
 const INT_STATS := ["atk", "def", "hp"]
 
 
-# item_id -> {material_id: count}, common/rare/epic tiers only -- mythic gear
-# is deliberately not craftable, staying a NG+-exclusive drop-only reward (see
-# MYTHIC_DROP_CHANCE above). Costs scale with rarity; first-pass numbers,
-# retune here if farming feels too fast/slow.
+# item_id -> {material_id: count}, epic tier and above only -- common/rare
+# were dropped entirely (those tiers are common enough from regular drops
+# that crafting them added little). Mythic recipes exist here too, but
+# player.gd's craft_item() additionally requires GlobalState.ng_plus_level > 0
+# to actually use them, matching mythic gear's existing NG+-exclusive
+# identity (see MYTHIC_DROP_CHANCE above) -- crafting is a second path to a
+# mythic item, not a way to skip the NG+ requirement. Costs scale with
+# rarity; first-pass numbers, retune here if farming feels too fast/slow.
 const CRAFTING_RECIPES := {
-	"weathered_bow": {"iron_ingot": 2},
-	"travelers_tunic": {"iron_ingot": 2},
-	"iron_ring": {"iron_ingot": 2},
-	"frostwind_bow": {"iron_ingot": 4, "ruby_gem": 3},
-	"steel_plate_armor": {"iron_ingot": 4, "ruby_gem": 3},
-	"sapphire_ring": {"iron_ingot": 4, "ruby_gem": 3},
 	"cursed_runebow": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
 	"voidscale_armor": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
 	"void_ring": {"iron_ingot": 6, "ruby_gem": 5, "dragon_scale": 4},
+	"sovereigns_bow": {"iron_ingot": 10, "ruby_gem": 8, "dragon_scale": 6},
+	"sovereigns_aegis": {"iron_ingot": 10, "ruby_gem": 8, "dragon_scale": 6},
+	"sovereigns_signet": {"iron_ingot": 10, "ruby_gem": 8, "dragon_scale": 6},
 }
 
 

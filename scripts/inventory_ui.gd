@@ -202,6 +202,13 @@ func _build_craft_row(item_id: String) -> HBoxContainer:
 			affordable = false
 		var mat_name: String = ItemDatabase.get_item(material_id).get("name", material_id)
 		cost_parts.append("%s %d/%d" % [mat_name, have, need])
+	# Mythic recipes are listed but stay locked outside NG+, mirroring
+	# player.gd's craft_item() gate -- shown rather than hidden so players
+	# know it exists as a reason to start NG+.
+	var is_locked_mythic: bool = item.get("rarity", "") == "mythic" and GlobalState.ng_plus_level <= 0
+	if is_locked_mythic:
+		cost_parts.append("Requires New Game+")
+		affordable = false
 	label.text = "%s (%s)\n%s" % [item.get("name", "?"), str(item.get("rarity", "common")).capitalize(), ", ".join(cost_parts)]
 	label.add_theme_color_override("font_color", item.get("color", Color.WHITE))
 	label.tooltip_text = item.get("description", "")

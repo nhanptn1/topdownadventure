@@ -888,6 +888,10 @@ func craft_item(item_id: String) -> bool:
 	var recipe := ItemDatabase.get_recipe(item_id)
 	if recipe.is_empty():
 		return false
+	# Mythic recipes exist in CRAFTING_RECIPES but stay locked outside NG+,
+	# same as mythic gear's existing drop-only gate (ItemDatabase.MYTHIC_DROP_CHANCE).
+	if ItemDatabase.get_item(item_id).get("rarity", "") == "mythic" and GlobalState.ng_plus_level <= 0:
+		return false
 	for material_id in recipe.keys():
 		if GlobalState.storage.get(material_id, 0) < recipe[material_id]:
 			return false
