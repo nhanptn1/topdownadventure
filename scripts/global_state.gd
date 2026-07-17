@@ -99,8 +99,9 @@ const NG_PLUS_RESET_MAX_HEALTH := 100
 
 # A real fresh run under a harder difficulty_multiplier(), not a "keep
 # everything" replay -- resets level/xp/HP back to a level-1 baseline and
-# wipes all gear/consumables/materials, so the higher NG+ scaling actually
+# wipes all gear/consumables/quest items, so the higher NG+ scaling actually
 # has to be faced rather than instantly trivialized by carried-over gear.
+# Crafting materials are the one deliberate exception (see below).
 # selected_character is deliberately left alone (still the same character),
 # and map/gate progress resets so the whole world (including the final
 # boss) needs re-clearing, now scaled up via difficulty_multiplier().
@@ -113,7 +114,17 @@ func start_new_game_plus() -> void:
 	player_xp = 0
 	player_max_health = NG_PLUS_RESET_MAX_HEALTH
 	player_health = player_max_health
-	storage.clear()
+	# Materials (dragon_scale/iron_ingot/ruby_gem) are a slow passive farm
+	# with no combat-power shortcut of their own -- unlike gear/level, having
+	# a stockpile doesn't trivialize the harder NG+ run, it just means
+	# crafting (item_database.gd's CRAFTING_RECIPES) doesn't force starting
+	# from zero on every single cycle. Consumables and quest items still
+	# reset along with everything else in storage.
+	var kept_materials := {}
+	for item_id in storage.keys():
+		if ItemDatabase.get_item(item_id).get("item_type", "") == "material":
+			kept_materials[item_id] = storage[item_id]
+	storage = kept_materials
 	quick_slots = {"heal": "", "throwable": "", "buff": ""}
 	gear_instances.clear()
 	gear_bag.clear()
